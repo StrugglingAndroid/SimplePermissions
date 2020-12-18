@@ -1,4 +1,4 @@
-package com.lnvip.android.permissions;
+package com.afterfinal.android.permissions;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -11,7 +11,7 @@ public @interface RequestPermissions {
 
     String[] value();
 
-    boolean must() default true;
+    boolean execWhenRejected() default false;
 
     TipMode tipMode() default TipMode.Dialog;
 }

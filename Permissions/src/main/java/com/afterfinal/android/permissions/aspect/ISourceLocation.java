@@ -1,4 +1,4 @@
-package com.lnvip.android.permissions.aspect;
+package com.afterfinal.android.permissions.aspect;
 
 public interface ISourceLocation {
     Class getWithinType();

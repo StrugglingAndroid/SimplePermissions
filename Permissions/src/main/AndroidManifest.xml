@@ -1,12 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.lnvip.android.permissions.api">
+    package="com.afterfinal.android.permissions.api">
 
     <application>
         <activity
-            android:name="com.lnvip.android.permissions.PermissionActivity"
+            android:name="com.afterfinal.android.permissions.PermissionActivity"
             android:theme="@style/Permissions.Transparent" />
         <activity
-            android:name="com.lnvip.android.permissions.SystemAlertPermissionActivity"
+            android:name="com.afterfinal.android.permissions.SystemAlertPermissionActivity"
             android:theme="@style/Permissions.Transparent" />
     </application>
 </manifest>

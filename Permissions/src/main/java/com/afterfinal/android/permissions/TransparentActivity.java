@@ -1,4 +1,4 @@
-package com.lnvip.android.permissions;
+package com.afterfinal.android.permissions;
 
 import android.os.Bundle;
 import android.view.Window;

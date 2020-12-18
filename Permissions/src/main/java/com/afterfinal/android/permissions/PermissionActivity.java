@@ -1,4 +1,4 @@
-package com.lnvip.android.permissions;
+package com.afterfinal.android.permissions;
 
 import android.Manifest;
 import android.content.DialogInterface;
@@ -14,7 +14,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 
-import com.lnvip.android.permissions.api.R;
+import com.afterfinal.android.permissions.api.R;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,7 @@ public class PermissionActivity extends TransparentActivity {
     private static final int REQUEST_PERMISSIONS = 0x7038;
     private static final int REQUEST_PERMISSIONS_SETTINGS = 0x7347;
 
-    private boolean must = true;
+    private boolean execWhenRejected = true;
     private TipMode tipMode = TipMode.Dialog;
 
     private String[] permissions;
@@ -37,7 +37,7 @@ public class PermissionActivity extends TransparentActivity {
         super.onCreate(savedInstanceState);
 
         permissions = getIntent().getStringArrayExtra(Permissions.KEY_PERMISSIONS);
-        must = getIntent().getBooleanExtra(Permissions.KEY_MUST, true);
+        execWhenRejected = getIntent().getBooleanExtra(Permissions.KEY_EXEC_WHEN_REJECTED, true);
         tipMode = (TipMode) getIntent().getSerializableExtra(Permissions.KEY_TIP_MODE);
         callback = Permissions.callbackMap.remove(getIntent().getStringExtra(Permissions.KEY_CALLBACK_ID));
 
@@ -120,7 +120,7 @@ public class PermissionActivity extends TransparentActivity {
     }
 
     private void dispatchRequestFinish() {
-        if (!must && null != callback) {
+        if (execWhenRejected && null != callback) {
             callback.onResult(granted, rejected);
         }
         finish();

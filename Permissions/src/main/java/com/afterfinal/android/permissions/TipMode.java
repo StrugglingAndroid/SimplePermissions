@@ -1,4 +1,4 @@
-package com.lnvip.android.permissions;
+package com.afterfinal.android.permissions;
 
 public enum TipMode {
     None(0),

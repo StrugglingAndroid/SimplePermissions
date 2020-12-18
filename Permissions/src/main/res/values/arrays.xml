@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="com_lnvip_permissions">
+    <string-array name="com_afterfinal_permissions">
         <item>android.permission.ACCESS_CHECKIN_PROPERTIES</item>
         <item>android.permission.ACCESS_COARSE_LOCATION</item>
         <item>android.permission.ACCESS_FINE_LOCATION</item>
@@ -122,7 +122,7 @@
         <item>android.permission.WRITE_SMS</item>
         <item>android.permission.WRITE_SYNC_SETTINGS</item>
     </string-array>
-    <string-array name="com_lnvip_permission_names">
+    <string-array name="com_afterfinal_permission_names">
         <item>访问登记属性</item>
         <item>获取错略位置</item>
         <item>获取精确位置</item>
@@ -244,7 +244,7 @@
         <item>编写短信</item>
         <item>写入在线同步设置</item>
     </string-array>
-    <string-array name="com_lnvip_permission_descriptions">
+    <string-array name="com_afterfinal_permission_descriptions">
         <item>读取或写入登记check-in数据库属性表的权限</item>
         <item>通过WiFi或移动基站的方式获取用户错略的经纬度信息,定位精度大概误差在30~1500米</item>
         <item>通过GPS芯片接收卫星的定位信息,定位精度达10米以内</item>

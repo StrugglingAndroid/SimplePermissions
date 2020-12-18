@@ -1,4 +1,4 @@
-package com.lnvip.android.permissions;
+package com.afterfinal.android.permissions;
 
 public class Util {
     public static String getString(int id) {

@@ -39,8 +39,8 @@ Permissions.init(this);
 
 #### 注解申请权限：
 ```
-    //must = true，权限被拒绝后，被注解的函数不会执行；
-    //must = false，权限被拒绝后，被注解的函数也会执行；
+    //execWhenRejected = true，权限被拒绝后，被注解的函数不会执行；
+    //execWhenRejected = false，权限被拒绝后，被注解的函数也会执行；
     @RequestPermissions(value = {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
@@ -48,7 +48,7 @@ Permissions.init(this);
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.SYSTEM_ALERT_WINDOW
-    }, tipMode = TipMode.Dialog, must = true)
+    }, tipMode = TipMode.Dialog, execWhenRejected = true)
     private void doRequestUsePermissions() {
         Toast.makeText(MainActivity.this, "doRequestUsePermissions", Toast.LENGTH_SHORT).show();
     }

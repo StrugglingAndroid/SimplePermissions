@@ -1,4 +1,4 @@
-package com.lnvip.android.permissions;
+package com.afterfinal.android.permissions;
 
 import android.app.Activity;
 import android.app.Application;
@@ -8,7 +8,7 @@ import android.content.pm.PackageManager;
 
 import androidx.core.app.ActivityCompat;
 
-import com.lnvip.android.permissions.api.R;
+import com.afterfinal.android.permissions.api.R;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,7 +22,7 @@ public class Permissions {
 
     static final String KEY_CALLBACK_ID = "KEY_CALLBACK_ID";
     static final String KEY_PERMISSIONS = "KEY_PERMISSIONS";
-    static final String KEY_MUST = "KEY_MUST";
+    static final String KEY_EXEC_WHEN_REJECTED = "KEY_EXEC_WHEN_REJECTED";
     static final String KEY_TIP_MODE = "KEY_SHOW_TIPS_WHEN_REJECTED";
 
     private static final Map<String, String[]> permissionNamesMap = new HashMap<>();
@@ -31,9 +31,9 @@ public class Permissions {
 
     public static void init(Application app) {
         sApplication = app;
-        String[] permissions = app.getResources().getStringArray(R.array.com_lnvip_permissions);
-        String[] permissionNames = app.getResources().getStringArray(R.array.com_lnvip_permission_names);
-        String[] permissionDescriptions = app.getResources().getStringArray(R.array.com_lnvip_permission_descriptions);
+        String[] permissions = app.getResources().getStringArray(R.array.com_afterfinal_permissions);
+        String[] permissionNames = app.getResources().getStringArray(R.array.com_afterfinal_permission_names);
+        String[] permissionDescriptions = app.getResources().getStringArray(R.array.com_afterfinal_permission_descriptions);
         for (int i = 0; i < permissions.length; i++) {
             if (i < permissionNames.length && i < permissionDescriptions.length) {
                 permissionNamesMap.put(permissions[i], new String[]{permissionNames[i], permissionDescriptions[i]});
@@ -67,7 +67,7 @@ public class Permissions {
         request(context, true, tipMode, callback, permissions);
     }
 
-    public static void request(Context context, boolean must, TipMode tipMode, Callback callback, String... permissions) {
+    public static void request(Context context, boolean execWhenRejected, TipMode tipMode, Callback callback, String... permissions) {
         boolean granted = true;
         for (String permission : permissions) {
             if (PackageManager.PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, permission)) {
@@ -84,7 +84,7 @@ public class Permissions {
         Intent intent = new Intent(context, PermissionActivity.class);
         intent.putExtra(KEY_CALLBACK_ID, callbackId);
         intent.putExtra(KEY_PERMISSIONS, permissions);
-        intent.putExtra(KEY_MUST, must);
+        intent.putExtra(KEY_EXEC_WHEN_REJECTED, execWhenRejected);
         intent.putExtra(KEY_TIP_MODE, tipMode);
         if (!(context instanceof Activity)) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
