@@ -39,8 +39,9 @@ Permissions.init(this);
 
 #### 注解申请权限：
 ```
-    //execWhenRejected = true，权限被拒绝后，被注解的函数不会执行；
-    //execWhenRejected = false，权限被拒绝后，被注解的函数也会执行；
+    //execWhenRejected = true，权限被拒绝后，被注解的函数也会执行；
+    //execWhenRejected = false，权限被拒绝后，被注解的函数不会执行；
+    //默认false
     @RequestPermissions(value = {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
