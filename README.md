@@ -29,7 +29,7 @@ buildscript {
 apply plugin: 'android-aspectjx'
 
 dependencies {
-    implementation 'com.gitee.afterfinal:simple-permissions:1.0.9'
+    implementation 'com.gitee.afterfinal:simple-permissions:1.1.0'
 }
 ```
 
