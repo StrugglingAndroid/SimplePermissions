@@ -74,7 +74,7 @@ public class PermissionActivity extends TransparentActivity {
                     dispatchRequestFinish();
                     break;
                 case Toast:
-                    Toast.makeText(getApplicationContext(), Util.getString(R.string.sp_permissions_lacked) + "\n" + Permissions.getPermissionNames(rejected, "\n"), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), getString(R.string.sp_permissions_lacked) + "\n" + Permissions.getPermissionNames(rejected, "\n"), Toast.LENGTH_SHORT).show();
                     dispatchRequestFinish();
                     break;
                 case Dialog:
@@ -129,23 +129,23 @@ public class PermissionActivity extends TransparentActivity {
     private void showRequestPermissionSettingDialog() {
         new AlertDialog.Builder(this)
                 .setCancelable(false)
-                .setTitle(Util.getString(R.string.sp_permissions_lacked))
+                .setTitle(getString(R.string.sp_permissions_lacked))
                 .setMessage(Permissions.getPermissionNames(rejected, "\n"))
-                .setPositiveButton(Util.getString(R.string.sp_go_setting), new DialogInterface.OnClickListener() {
+                .setPositiveButton(getString(R.string.sp_go_setting), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         dialogInterface.dismiss();
                         try {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                            Uri uri = Uri.fromParts("package", Permissions.getApplication().getPackageName(), null);
+                            Uri uri = Uri.fromParts("package", getApplication().getPackageName(), null);
                             intent.setData(uri);
                             startActivityForResult(intent, REQUEST_PERMISSIONS_SETTINGS);
                         } catch (Exception e) {
-                            Toast.makeText(getApplicationContext(), Util.getString(R.string.sp_cannot_open_settings), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getApplicationContext(), getString(R.string.sp_cannot_open_settings), Toast.LENGTH_SHORT).show();
                         }
                     }
                 })
-                .setNegativeButton(Util.getString(R.string.sp_go_close), new DialogInterface.OnClickListener() {
+                .setNegativeButton(getString(R.string.sp_go_close), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         dialogInterface.dismiss();

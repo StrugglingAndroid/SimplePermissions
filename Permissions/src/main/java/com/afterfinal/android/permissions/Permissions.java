@@ -10,6 +10,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.afterfinal.android.permissions.api.R;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -17,8 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@SuppressWarnings("all")
 public class Permissions {
-    private static Application sApplication;
+    private static Context sContext;
 
     static final String KEY_CALLBACK_ID = "KEY_CALLBACK_ID";
     static final String KEY_PERMISSIONS = "KEY_PERMISSIONS";
@@ -29,11 +31,11 @@ public class Permissions {
 
     static final Map<String, Callback> callbackMap = new HashMap<>();
 
-    public static void init(Application app) {
-        sApplication = app;
-        String[] permissions = app.getResources().getStringArray(R.array.com_afterfinal_permissions);
-        String[] permissionNames = app.getResources().getStringArray(R.array.com_afterfinal_permission_names);
-        String[] permissionDescriptions = app.getResources().getStringArray(R.array.com_afterfinal_permission_descriptions);
+    public static void init(Context context) {
+        sContext = context;
+        String[] permissions = context.getResources().getStringArray(R.array.com_afterfinal_permissions);
+        String[] permissionNames = context.getResources().getStringArray(R.array.com_afterfinal_permission_names);
+        String[] permissionDescriptions = context.getResources().getStringArray(R.array.com_afterfinal_permission_descriptions);
         for (int i = 0; i < permissions.length; i++) {
             if (i < permissionNames.length && i < permissionDescriptions.length) {
                 permissionNamesMap.put(permissions[i], new String[]{permissionNames[i], permissionDescriptions[i]});
@@ -41,8 +43,11 @@ public class Permissions {
         }
     }
 
-    public static Application getApplication() {
-        return sApplication;
+    public static Context getContext() {
+        if (null == sContext) {
+            sContext = reflectApplication();
+        }
+        return sContext;
     }
 
     public static String getPermissionName(String permission) {
@@ -56,7 +61,7 @@ public class Permissions {
     }
 
     public static void request(Callback callback, String... permissions) {
-        request(sApplication, callback, permissions);
+        request(sContext, callback, permissions);
     }
 
     public static void request(Context context, Callback callback, String... permissions) {
@@ -112,5 +117,38 @@ public class Permissions {
         void onResult(List<String> granted, List<String> rejected);
     }
 
+    /**
+     * 获取当前应用的Application
+     * 先使用ActivityThread里获取Application的方法，如果没有获取到，
+     * 再使用AppGlobals里面的获取Application的方法
+     *
+     * @return
+     */
+    @SuppressWarnings("all")
+    private static Application reflectApplication() {
+        Application application = null;
+        try {
+            Class atClass = Class.forName("android.app.ActivityThread");
+            Method currentApplicationMethod = atClass.getDeclaredMethod("currentApplication");
+            currentApplicationMethod.setAccessible(true);
+            application = (Application) currentApplicationMethod.invoke(null);
+        } catch (Exception e) {
+
+        }
+
+        if (application != null) {
+            return application;
+        }
+
+        try {
+            Class atClass = Class.forName("android.app.AppGlobals");
+            Method currentApplicationMethod = atClass.getDeclaredMethod("getInitialApplication");
+            currentApplicationMethod.setAccessible(true);
+            application = (Application) currentApplicationMethod.invoke(null);
+        } catch (Exception e) {
+        }
+
+        return application;
+    }
 
 }
