@@ -43,15 +43,7 @@ public class PermissionsAspect {
                         PermissionRequestCallback callback = (PermissionRequestCallback) joinPoint.getThis();
                         callback.onPermissionRequestResult(new ProceedingJoinPointIml(joinPoint), requestPermissions.execWhenRejected(), granted, rejected);
                     } else {
-                        if (requestPermissions.execWhenRejected()) {
-                            if (0 == rejected.size()) {
-                                try {
-                                    joinPoint.proceed(joinPoint.getArgs());
-                                } catch (Throwable throwable) {
-                                    throwable.printStackTrace();
-                                }
-                            }
-                        } else {
+                        if (0 == rejected.size() || requestPermissions.execWhenRejected()) {
                             try {
                                 joinPoint.proceed(joinPoint.getArgs());
                             } catch (Throwable throwable) {
