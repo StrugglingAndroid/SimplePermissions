@@ -25,10 +25,10 @@ public class PermissionActivity extends TransparentActivity {
 
     private TipMode tipMode = TipMode.Dialog;
 
+    private boolean execWhenRejected = false;
     private String[] permissions;
     private Permissions.Callback callback;
 
-    private boolean shouldShowRequestPermissionRationale = false;
     private final List<String> granted = new ArrayList<>();
     private final List<String> rejected = new ArrayList<>();
 
@@ -37,6 +37,7 @@ public class PermissionActivity extends TransparentActivity {
         super.onCreate(savedInstanceState);
 
         permissions = getIntent().getStringArrayExtra(Permissions.KEY_PERMISSIONS);
+        execWhenRejected = getIntent().getBooleanExtra(Permissions.KEY_EXEC_WHEN_REJECTED, false);
         tipMode = (TipMode) getIntent().getSerializableExtra(Permissions.KEY_TIP_MODE);
         callback = Permissions.callbackMap.remove(getIntent().getStringExtra(Permissions.KEY_CALLBACK_ID));
 
@@ -64,6 +65,18 @@ public class PermissionActivity extends TransparentActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        handlePermissionResult();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (REQUEST_PERMISSIONS_SETTINGS == requestCode) {
+            handlePermissionResult();
+        }
+    }
+
+    private void handlePermissionResult() {
         check();
         if (0 == rejected.size()) {
             dispatchRequestFinish();
@@ -83,19 +96,6 @@ public class PermissionActivity extends TransparentActivity {
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (REQUEST_PERMISSIONS_SETTINGS == requestCode) {
-            check();
-            if (shouldShowRequestPermissionRationale && rejected.size() > 0) {
-                showRequestPermissionSettingDialog();
-            } else {
-                dispatchRequestFinish();
-            }
-        }
-    }
-
     private void check() {
         granted.clear();
         rejected.clear();
@@ -105,14 +105,12 @@ public class PermissionActivity extends TransparentActivity {
                     if (SystemAlertPermission.hasPermission(this)) {
                         granted.add(permission);
                     } else {
-                        shouldShowRequestPermissionRationale = true;
                         rejected.add(permission);
                     }
                 } else {
                     if (PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(this, permission)) {
                         granted.add(permission);
                     } else {
-                        shouldShowRequestPermissionRationale |= ActivityCompat.shouldShowRequestPermissionRationale(this, permission);
                         rejected.add(permission);
                     }
                 }
@@ -146,7 +144,7 @@ public class PermissionActivity extends TransparentActivity {
                         }
                     }
                 })
-                .setNegativeButton(getString(R.string.sp_go_close), new DialogInterface.OnClickListener() {
+                .setNegativeButton(execWhenRejected ? getString(R.string.sp_skip_setting) : getString(R.string.sp_go_close), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         dialogInterface.dismiss();
