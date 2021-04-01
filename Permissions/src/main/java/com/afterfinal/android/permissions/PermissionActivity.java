@@ -23,12 +23,12 @@ public class PermissionActivity extends TransparentActivity {
     private static final int REQUEST_PERMISSIONS = 0x7038;
     private static final int REQUEST_PERMISSIONS_SETTINGS = 0x7347;
 
-    private boolean execWhenRejected = true;
     private TipMode tipMode = TipMode.Dialog;
 
     private String[] permissions;
     private Permissions.Callback callback;
 
+    private boolean shouldShowRequestPermissionRationale = false;
     private final List<String> granted = new ArrayList<>();
     private final List<String> rejected = new ArrayList<>();
 
@@ -37,7 +37,6 @@ public class PermissionActivity extends TransparentActivity {
         super.onCreate(savedInstanceState);
 
         permissions = getIntent().getStringArrayExtra(Permissions.KEY_PERMISSIONS);
-        execWhenRejected = getIntent().getBooleanExtra(Permissions.KEY_EXEC_WHEN_REJECTED, true);
         tipMode = (TipMode) getIntent().getSerializableExtra(Permissions.KEY_TIP_MODE);
         callback = Permissions.callbackMap.remove(getIntent().getStringExtra(Permissions.KEY_CALLBACK_ID));
 
@@ -89,7 +88,7 @@ public class PermissionActivity extends TransparentActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (REQUEST_PERMISSIONS_SETTINGS == requestCode) {
             check();
-            if (rejected.size() > 0) {
+            if (shouldShowRequestPermissionRationale && rejected.size() > 0) {
                 showRequestPermissionSettingDialog();
             } else {
                 dispatchRequestFinish();
@@ -106,12 +105,14 @@ public class PermissionActivity extends TransparentActivity {
                     if (SystemAlertPermission.hasPermission(this)) {
                         granted.add(permission);
                     } else {
+                        shouldShowRequestPermissionRationale = true;
                         rejected.add(permission);
                     }
                 } else {
                     if (PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(this, permission)) {
                         granted.add(permission);
                     } else {
+                        shouldShowRequestPermissionRationale |= ActivityCompat.shouldShowRequestPermissionRationale(this, permission);
                         rejected.add(permission);
                     }
                 }
@@ -120,7 +121,7 @@ public class PermissionActivity extends TransparentActivity {
     }
 
     private void dispatchRequestFinish() {
-        if (execWhenRejected && null != callback) {
+        if (null != callback) {
             callback.onResult(granted, rejected);
         }
         finish();

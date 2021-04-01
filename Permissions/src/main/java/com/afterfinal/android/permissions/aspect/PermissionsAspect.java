@@ -36,7 +36,7 @@ public class PermissionsAspect {
                 joinPoint.proceed();
                 return;
             }
-            Permissions.request(Permissions.getContext(), requestPermissions.execWhenRejected(), requestPermissions.tipMode(), new Permissions.Callback() {
+            Permissions.request(Permissions.getContext(), requestPermissions.tipMode(), new Permissions.Callback() {
                 @Override
                 public void onResult(List<String> granted, List<String> rejected) {
                     if (joinPoint.getThis() instanceof PermissionRequestCallback) {
