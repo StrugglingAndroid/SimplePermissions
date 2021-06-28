@@ -4,9 +4,11 @@
     <application>
         <activity
             android:name="com.afterfinal.android.permissions.PermissionActivity"
+            android:launchMode="singleTop"
             android:theme="@style/Permissions.Transparent" />
         <activity
             android:name="com.afterfinal.android.permissions.SystemAlertPermissionActivity"
+            android:launchMode="singleTop"
             android:theme="@style/Permissions.Transparent" />
     </application>
 </manifest>
