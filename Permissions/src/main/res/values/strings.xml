@@ -2,7 +2,7 @@
 <resources>
     <string name="sp_permissions_lacked">缺少必要权限：</string>
     <string name="sp_go_setting">设置</string>
-    <string name="sp_go_close">关闭</string>
+    <string name="sp_exit_app">退出</string>
     <string name="sp_cannot_open_settings">无法打开设置</string>
     <string name="sp_cannot_open_overlay_settings">无法打开悬浮窗权限设置界面，请到设置里打开悬浮窗权限</string>
     <string name="sp_skip_setting">跳过</string>

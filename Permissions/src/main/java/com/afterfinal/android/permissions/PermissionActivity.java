@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Process;
 import android.provider.Settings;
 import android.widget.Toast;
 
@@ -144,11 +145,16 @@ public class PermissionActivity extends TransparentActivity {
                         }
                     }
                 })
-                .setNegativeButton(execWhenRejected ? getString(R.string.sp_skip_setting) : getString(R.string.sp_go_close), new DialogInterface.OnClickListener() {
+                .setNegativeButton(execWhenRejected ? getString(R.string.sp_skip_setting) : getString(R.string.sp_exit_app), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        dialogInterface.dismiss();
-                        dispatchRequestFinish();
+                        if (execWhenRejected) {
+                            dialogInterface.dismiss();
+                            dispatchRequestFinish();
+                        } else {
+                            System.exit(0);
+                            Process.killProcess(Process.myPid());
+                        }
                     }
                 }).show();
     }
