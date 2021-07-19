@@ -1,10 +1,12 @@
 package com.afterfinal.android.permissions;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Environment;
 
 import androidx.core.app.ActivityCompat;
 
@@ -75,7 +77,13 @@ public class Permissions {
     public static void request(Context context, boolean execWhenRejected, TipMode tipMode, Callback callback, String... permissions) {
         boolean granted = true;
         for (String permission : permissions) {
-            if (PackageManager.PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, permission)) {
+            if (Manifest.permission.SYSTEM_ALERT_WINDOW.equals(permission) && !SystemAlertPermission.hasPermission(context)) {
+                granted = false;
+                break;
+            } else if (Manifest.permission.MANAGE_EXTERNAL_STORAGE.equals(permission) && !Environment.isExternalStorageManager()) {
+                granted = false;
+                break;
+            } else if (PackageManager.PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, permission)) {
                 granted = false;
                 break;
             }

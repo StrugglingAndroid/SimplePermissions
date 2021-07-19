@@ -5,7 +5,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Process;
 import android.provider.Settings;
 import android.widget.Toast;
@@ -47,6 +49,11 @@ public class PermissionActivity extends TransparentActivity {
 
     private void requestPermissions() {
         check();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            rejected.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+        } else if (rejected.contains(Manifest.permission.WRITE_EXTERNAL_STORAGE) && !rejected.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE)) {
+            rejected.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+        }
         if (rejected.contains(Manifest.permission.SYSTEM_ALERT_WINDOW) && !SystemAlertPermission.hasPermission(this)) {
             SystemAlertPermission.request(this, new SystemAlertPermission.Callback() {
                 @Override
@@ -58,6 +65,10 @@ public class PermissionActivity extends TransparentActivity {
                     ActivityCompat.requestPermissions(PermissionActivity.this, permissions, REQUEST_PERMISSIONS);
                 }
             });
+        } else if (rejected.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE) && !Environment.isExternalStorageManager()) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+            intent.setData(Uri.parse("package:" + getApplication().getPackageName()));
+            startActivityForResult(intent, REQUEST_PERMISSIONS);
         } else {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_PERMISSIONS);
         }
@@ -104,6 +115,12 @@ public class PermissionActivity extends TransparentActivity {
             for (String permission : permissions) {
                 if (Manifest.permission.SYSTEM_ALERT_WINDOW.equals(permission)) {
                     if (SystemAlertPermission.hasPermission(this)) {
+                        granted.add(permission);
+                    } else {
+                        rejected.add(permission);
+                    }
+                } else if (Manifest.permission.MANAGE_EXTERNAL_STORAGE.equals(permission)) {
+                    if (Environment.isExternalStorageManager()) {
                         granted.add(permission);
                     } else {
                         rejected.add(permission);
