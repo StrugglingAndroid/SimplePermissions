@@ -6,4 +6,5 @@
     <string name="sp_cannot_open_settings">无法打开设置</string>
     <string name="sp_cannot_open_overlay_settings">无法打开悬浮窗权限设置界面，请到设置里打开悬浮窗权限</string>
     <string name="sp_skip_setting">跳过</string>
+    <string name="sp_close">关闭</string>
 </resources>

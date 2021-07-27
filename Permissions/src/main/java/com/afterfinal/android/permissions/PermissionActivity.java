@@ -29,6 +29,7 @@ public class PermissionActivity extends TransparentActivity {
     private TipMode tipMode = TipMode.Dialog;
 
     private boolean execWhenRejected = false;
+    private boolean exitWhenRejected = false;
     private String[] permissions;
     private Permissions.Callback callback;
 
@@ -41,6 +42,7 @@ public class PermissionActivity extends TransparentActivity {
 
         permissions = getIntent().getStringArrayExtra(Permissions.KEY_PERMISSIONS);
         execWhenRejected = getIntent().getBooleanExtra(Permissions.KEY_EXEC_WHEN_REJECTED, false);
+        exitWhenRejected = getIntent().getBooleanExtra(Permissions.KEY_EXIT_WHEN_REJECTED, false);
         tipMode = (TipMode) getIntent().getSerializableExtra(Permissions.KEY_TIP_MODE);
         callback = Permissions.callbackMap.remove(getIntent().getStringExtra(Permissions.KEY_CALLBACK_ID));
 
@@ -162,7 +164,7 @@ public class PermissionActivity extends TransparentActivity {
                         }
                     }
                 })
-                .setNegativeButton(execWhenRejected ? getString(R.string.sp_skip_setting) : getString(R.string.sp_exit_app), new DialogInterface.OnClickListener() {
+                .setNegativeButton(exitWhenRejected ? getString(R.string.sp_exit_app) : (execWhenRejected ? getString(R.string.sp_skip_setting) : getString(R.string.sp_close)), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         if (execWhenRejected) {

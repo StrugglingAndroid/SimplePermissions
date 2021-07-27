@@ -13,5 +13,7 @@ public @interface RequestPermissions {
 
     boolean execWhenRejected() default false;
 
+    boolean exitWhenRejected() default false;
+
     TipMode tipMode() default TipMode.Dialog;
 }
