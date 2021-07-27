@@ -51,11 +51,16 @@ public class PermissionActivity extends TransparentActivity {
 
     private void requestPermissions() {
         check();
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+
+        if (getApplicationInfo().targetSdkVersion < Build.VERSION_CODES.R || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (rejected.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE) && !rejected.contains(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                rejected.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            }
             rejected.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
         } else if (rejected.contains(Manifest.permission.WRITE_EXTERNAL_STORAGE) && !rejected.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE)) {
             rejected.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
         }
+
         if (rejected.contains(Manifest.permission.SYSTEM_ALERT_WINDOW) && !SystemAlertPermission.hasPermission(this)) {
             SystemAlertPermission.request(this, new SystemAlertPermission.Callback() {
                 @Override
