@@ -231,12 +231,16 @@ public class PermissionActivity extends TransparentActivity {
                 .setNegativeButton(exitWhenRejected ? getString(R.string.sp_exit_app) : (execWhenRejected ? getString(R.string.sp_skip_setting) : getString(R.string.sp_close)), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        if (execWhenRejected) {
-                            dialogInterface.dismiss();
-                            dispatchRequestFinish();
-                        } else {
+                        if (exitWhenRejected) {
                             System.exit(0);
                             Process.killProcess(Process.myPid());
+                        } else {
+                            dialogInterface.dismiss();
+                            if (execWhenRejected) {
+                                dispatchRequestFinish();
+                            } else {
+                                finish();
+                            }
                         }
                     }
                 }).show();
