@@ -11,9 +11,9 @@ public @interface RequestPermissions {
 
     String[] value();
 
-    boolean execWhenRejected() default false;
+    boolean execWhenRejected() default true;
 
     boolean exitWhenRejected() default false;
 
-    TipMode tipMode() default TipMode.Dialog;
+    TipMode tipMode() default TipMode.Toast;
 }

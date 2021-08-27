@@ -1,5 +1,6 @@
 package com.afterfinal.android.permissions.aspect;
 
+import com.afterfinal.android.permissions.Options;
 import com.afterfinal.android.permissions.PermissionRequestCallback;
 import com.afterfinal.android.permissions.Permissions;
 import com.afterfinal.android.permissions.RequestPermissions;
@@ -9,6 +10,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.aspectj.runtime.internal.AroundClosure;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -36,14 +38,17 @@ public class PermissionsAspect {
                 joinPoint.proceed();
                 return;
             }
-            Permissions.request(Permissions.getContext(), requestPermissions.execWhenRejected(), requestPermissions.exitWhenRejected(), requestPermissions.tipMode(), new Permissions.Callback() {
+            final Options options = new Options(requestPermissions.execWhenRejected(), requestPermissions.exitWhenRejected(), requestPermissions.tipMode());
+            Permissions.request(Permissions.getContext(), options, new Permissions.Callback() {
                 @Override
-                public void onResult(List<String> granted, List<String> rejected) {
+                public void onResult(Options options, List<String> granted, List<String> rejected) {
                     if (joinPoint.getThis() instanceof PermissionRequestCallback) {
-                        PermissionRequestCallback callback = (PermissionRequestCallback) joinPoint.getThis();
-                        callback.onPermissionRequestResult(new ProceedingJoinPointIml(joinPoint), requestPermissions.execWhenRejected(), granted, rejected);
+                        if (0 == rejected.size() || options.execWhenRejected) {
+                            PermissionRequestCallback callback = (PermissionRequestCallback) joinPoint.getThis();
+                            callback.onPermissionRequestResult(options, granted, rejected, new ProceedingJoinPointIml(joinPoint));
+                        }
                     } else {
-                        if (0 == rejected.size() || requestPermissions.execWhenRejected()) {
+                        if (0 == rejected.size() || options.execWhenRejected) {
                             try {
                                 joinPoint.proceed(joinPoint.getArgs());
                             } catch (Throwable throwable) {

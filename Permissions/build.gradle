@@ -3,13 +3,13 @@ apply plugin: 'android-aspectjx'
 
 android {
     compileSdkVersion 30
-    buildToolsVersion "30.0.1"
+    buildToolsVersion "30.0.3"
 
     defaultConfig {
         minSdkVersion 21
         targetSdkVersion 30
-        versionCode 121
-        versionName "1.2.1"
+        versionCode 122
+        versionName "1.2.2"
     }
 
     buildTypes {

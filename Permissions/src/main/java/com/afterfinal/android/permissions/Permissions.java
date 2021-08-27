@@ -16,6 +16,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,10 +26,8 @@ public class Permissions {
     private static Context sContext;
 
     static final String KEY_CALLBACK_ID = "KEY_CALLBACK_ID";
-    static final String KEY_EXEC_WHEN_REJECTED = "KEY_EXEC_WHEN_REJECTED";
-    static final String KEY_EXIT_WHEN_REJECTED = "KEY_EXIT_WHEN_REJECTED";
+    static final String KEY_OPTIONS = "KEY_OPTIONS";
     static final String KEY_PERMISSIONS = "KEY_PERMISSIONS";
-    static final String KEY_TIP_MODE = "KEY_SHOW_TIPS_WHEN_REJECTED";
 
     private static final Map<String, String[]> permissionNamesMap = new HashMap<>();
 
@@ -64,22 +63,10 @@ public class Permissions {
     }
 
     public static void request(Callback callback, String... permissions) {
-        request(sContext, callback, permissions);
+        request(sContext, null, callback, permissions);
     }
 
-    public static void request(Context context, Callback callback, String... permissions) {
-        request(context, TipMode.Dialog, callback, permissions);
-    }
-
-    public static void request(Context context, TipMode tipMode, Callback callback, String... permissions) {
-        request(context, false, tipMode, callback, permissions);
-    }
-
-    public static void request(Context context, boolean execWhenRejected, TipMode tipMode, Callback callback, String... permissions) {
-        request(context, execWhenRejected, false, tipMode, callback, permissions);
-    }
-
-    public static void request(Context context, boolean execWhenRejected, boolean exitWhenRejected, TipMode tipMode, Callback callback, String... permissions) {
+    public static void request(Context context, Options options, Callback callback, String... permissions) {
         boolean granted = true;
         for (String permission : permissions) {
             if (Manifest.permission.SYSTEM_ALERT_WINDOW.equals(permission) && !SystemAlertPermission.hasPermission(context)) {
@@ -94,17 +81,15 @@ public class Permissions {
             }
         }
         if (granted) {
-            callback.onResult(Arrays.asList(permissions), new ArrayList<String>());
+            callback.onResult(options, Arrays.asList(permissions), new ArrayList<String>());
             return;
         }
         String callbackId = genId(callback);
         callbackMap.put(callbackId, callback);
         Intent intent = new Intent(context, PermissionActivity.class);
         intent.putExtra(KEY_CALLBACK_ID, callbackId);
-        intent.putExtra(KEY_EXEC_WHEN_REJECTED, execWhenRejected);
-        intent.putExtra(KEY_EXIT_WHEN_REJECTED, exitWhenRejected);
+        intent.putExtra(KEY_OPTIONS, options);
         intent.putExtra(KEY_PERMISSIONS, permissions);
-        intent.putExtra(KEY_TIP_MODE, tipMode);
         if (!(context instanceof Activity)) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         }
@@ -119,16 +104,17 @@ public class Permissions {
         if (null == permissions || 0 == permissions.size()) {
             return "";
         }
-        StringBuilder result = new StringBuilder(getPermissionName(permissions.get(0)));
-        for (int i = 1; i < permissions.size(); i++) {
-            result.append(concat).append(getPermissionName(permissions.get(i)));
+        Iterator<String> iterator = permissions.iterator();
+        StringBuilder result = new StringBuilder(getPermissionName(iterator.next()));
+        while (iterator.hasNext()) {
+            result.append(concat).append(getPermissionName(iterator.next()));
         }
         return result.toString();
     }
 
     public interface Callback {
 
-        void onResult(List<String> granted, List<String> rejected);
+        void onResult(Options options, List<String> granted, List<String> rejected);
     }
 
     /**
