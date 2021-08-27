@@ -64,29 +64,65 @@ public class PermissionActivity extends TransparentActivity {
         }
 
         if (rejected.contains(Manifest.permission.SYSTEM_ALERT_WINDOW)) {
-            SystemAlertPermission.request(this, new SystemAlertPermission.Callback() {
-                @Override
-                public void onResult(boolean isGranted) {
-                    check();
-                    if (isGranted) {
-                        granted.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                        rejected.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                        if (rejected.size() > 0) {
-                            requestPermissions();
-                        } else {
+            new AlertDialog.Builder(this)
+                    .setCancelable(false)
+                    .setMessage("\"" + getApplicationInfo().loadLabel(getPackageManager()) + "\"需要使用以下权限：\n" + Permissions.getPermissionName(Manifest.permission.SYSTEM_ALERT_WINDOW))
+                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            SystemAlertPermission.request(PermissionActivity.this, new SystemAlertPermission.Callback() {
+                                @Override
+                                public void onResult(boolean isGranted) {
+                                    check();
+                                    if (isGranted) {
+                                        granted.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
+                                        rejected.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
+                                        if (rejected.size() > 0) {
+                                            requestPermissions();
+                                        } else {
+                                            handlePermissionResult();
+                                        }
+                                    } else {
+                                        rejected.clear();
+                                        rejected.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
+                                        handlePermissionResult();
+                                    }
+                                }
+                            });
+                        }
+                    })
+                    .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            rejected.clear();
+                            rejected.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
                             handlePermissionResult();
                         }
-                    } else {
-                        rejected.clear();
-                        rejected.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                        handlePermissionResult();
-                    }
-                }
-            });
+                    }).show();
         } else if (rejected.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE)) {
-            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-            intent.setData(Uri.parse("package:" + getApplication().getPackageName()));
-            startActivityForResult(intent, REQUEST_STORAGE_MANAGER);
+            new AlertDialog.Builder(this)
+                    .setCancelable(false)
+                    .setMessage("\"" + getApplicationInfo().loadLabel(getPackageManager()) + "\"需要使用以下权限：\n" + Permissions.getPermissionName(Manifest.permission.SYSTEM_ALERT_WINDOW))
+                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                            intent.setData(Uri.parse("package:" + getApplication().getPackageName()));
+                            startActivityForResult(intent, REQUEST_STORAGE_MANAGER);
+                        }
+                    })
+                    .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            rejected.clear();
+                            rejected.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+                            handlePermissionResult();
+                        }
+                    }).show();
         } else {
             ActivityCompat.requestPermissions(this, permissions.toArray(new String[0]), REQUEST_PERMISSIONS);
         }
