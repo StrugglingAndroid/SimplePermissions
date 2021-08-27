@@ -64,60 +64,42 @@ public class PermissionActivity extends TransparentActivity {
         }
 
         if (rejected.contains(Manifest.permission.SYSTEM_ALERT_WINDOW)) {
-            new AlertDialog.Builder(this)
-                    .setCancelable(false)
-                    .setMessage("\"" + getApplicationInfo().loadLabel(getPackageManager()) + "\"需要使用以下权限：\n" + Permissions.getPermissionName(Manifest.permission.SYSTEM_ALERT_WINDOW))
-                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
-                            SystemAlertPermission.request(PermissionActivity.this, new SystemAlertPermission.Callback() {
-                                @Override
-                                public void onResult(boolean isGranted) {
-                                    check();
-                                    if (isGranted) {
-                                        granted.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                                        rejected.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                                        if (rejected.size() > 0) {
-                                            requestPermissions();
-                                        } else {
-                                            handlePermissionResult();
-                                        }
-                                    } else {
-                                        rejected.clear();
-                                        rejected.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                                        handlePermissionResult();
-                                    }
-                                }
-                            });
-                        }
-                    })
-                    .setNegativeButton("取消", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
-                            rejected.clear();
-                            rejected.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
+            SystemAlertPermission.request(PermissionActivity.this, new SystemAlertPermission.Callback() {
+                @Override
+                public void onResult(boolean isGranted) {
+                    check();
+                    if (isGranted) {
+                        granted.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
+                        rejected.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
+                        if (rejected.size() > 0) {
+                            requestPermissions();
+                        } else {
                             handlePermissionResult();
                         }
-                    }).show();
+                    } else {
+                        rejected.clear();
+                        rejected.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
+                        handlePermissionResult();
+                    }
+                }
+            });
         } else if (rejected.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE)) {
             new AlertDialog.Builder(this)
                     .setCancelable(false)
-                    .setMessage("\"" + getApplicationInfo().loadLabel(getPackageManager()) + "\"需要使用以下权限：\n" + Permissions.getPermissionName(Manifest.permission.SYSTEM_ALERT_WINDOW))
-                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    .setMessage("缺少" + Permissions.getPermissionName(Manifest.permission.MANAGE_EXTERNAL_STORAGE) + "权限")
+                    .setPositiveButton("去开启", new DialogInterface.OnClickListener() {
                         @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            dialogInterface.dismiss();
                             Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                             intent.setData(Uri.parse("package:" + getApplication().getPackageName()));
                             startActivityForResult(intent, REQUEST_STORAGE_MANAGER);
                         }
                     })
-                    .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    .setNegativeButton("暂不开启", new DialogInterface.OnClickListener() {
                         @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            dialogInterface.dismiss();
                             rejected.clear();
                             rejected.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
                             handlePermissionResult();
