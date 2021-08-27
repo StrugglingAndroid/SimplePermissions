@@ -9,6 +9,7 @@ public class Options implements Parcelable {
     public TipMode tipMode = TipMode.Toast;
 
     public Options() {
+        this(true, false, TipMode.Toast);
     }
 
     public Options(boolean execWhenRejected, boolean exitWhenRejected, TipMode tipMode) {
@@ -20,6 +21,7 @@ public class Options implements Parcelable {
     protected Options(Parcel in) {
         execWhenRejected = in.readByte() != 0;
         exitWhenRejected = in.readByte() != 0;
+        tipMode = TipMode.parse(in.readInt());
     }
 
     public static final Creator<Options> CREATOR = new Creator<Options>() {
@@ -43,5 +45,6 @@ public class Options implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeByte((byte) (execWhenRejected ? 1 : 0));
         dest.writeByte((byte) (exitWhenRejected ? 1 : 0));
+        dest.writeInt(tipMode.getValue());
     }
 }

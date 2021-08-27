@@ -11,6 +11,15 @@ public enum TipMode {
         this.value = value;
     }
 
+    public static TipMode parse(int v) {
+        for (TipMode value : values()) {
+            if(value.value == v){
+                return value;
+            }
+        }
+        return None;
+    }
+
     public int getValue() {
         return value;
     }

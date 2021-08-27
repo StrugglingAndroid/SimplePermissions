@@ -189,8 +189,8 @@ public class PermissionActivity extends TransparentActivity {
             if (permissions.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE)) {
                 permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
-                permissions.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || getApplicationInfo().targetSdkVersion < Build.VERSION_CODES.R) {
+                permissions.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
             }
             for (String permission : permissions) {
                 if (PackageManager.PERMISSION_GRANTED == checkSelfPermission(this, permission)) {
