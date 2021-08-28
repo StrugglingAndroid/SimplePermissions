@@ -20,6 +20,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.afterfinal.android.permissions.api.R;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -29,11 +30,13 @@ public class PermissionActivity extends TransparentActivity {
     private static final int REQUEST_STORAGE_MANAGER = 0x7653;
 
     private Options options;
-    private List<String> permissions;
     private Permissions.Callback callback;
 
     private final List<String> granted = new UniqueArrayList();
     private final List<String> rejected = new UniqueArrayList();
+
+    private final List<String> permissions = new UniqueArrayList();
+    private final List<String> requestingPermissions = new UniqueArrayList();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -45,10 +48,13 @@ public class PermissionActivity extends TransparentActivity {
         }
 
         String[] ps = getIntent().getStringArrayExtra(Permissions.KEY_PERMISSIONS);
-        permissions = new UniqueArrayList();
         if (null != ps) {
             Collections.addAll(permissions, ps);
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || getApplicationInfo().targetSdkVersion < Build.VERSION_CODES.R) {
+                permissions.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+            }
         }
+        check(requestingPermissions);
 
         callback = Permissions.callbackMap.remove(getIntent().getStringExtra(Permissions.KEY_CALLBACK_ID));
 
@@ -58,32 +64,20 @@ public class PermissionActivity extends TransparentActivity {
     private void requestPermissions() {
         check();
 
-        if (0 == rejected.size()) {
-            dispatchRequestFinish();
+        if (0 == requestingPermissions.size() || 0 == rejected.size()) {
+            handlePermissionResult();
             return;
         }
 
-        if (rejected.contains(Manifest.permission.SYSTEM_ALERT_WINDOW)) {
+        if (requestingPermissions.contains(Manifest.permission.SYSTEM_ALERT_WINDOW)) {
             SystemAlertPermission.request(PermissionActivity.this, new SystemAlertPermission.Callback() {
                 @Override
                 public void onResult(boolean isGranted) {
-                    check();
-                    if (isGranted) {
-                        granted.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                        rejected.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                        if (rejected.size() > 0) {
-                            requestPermissions();
-                        } else {
-                            handlePermissionResult();
-                        }
-                    } else {
-                        rejected.clear();
-                        rejected.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                        handlePermissionResult();
-                    }
+                    requestingPermissions.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
+                    requestPermissions();
                 }
             });
-        } else if (rejected.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE)) {
+        } else if (requestingPermissions.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE)) {
             new AlertDialog.Builder(this)
                     .setCancelable(false)
                     .setMessage("缺少" + Permissions.getPermissionName(Manifest.permission.MANAGE_EXTERNAL_STORAGE) + "权限")
@@ -100,53 +94,32 @@ public class PermissionActivity extends TransparentActivity {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
                             dialogInterface.dismiss();
-                            rejected.clear();
-                            rejected.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
-                            handlePermissionResult();
+                            requestingPermissions.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+                            requestPermissions();
                         }
                     }).show();
         } else {
-            ActivityCompat.requestPermissions(this, permissions.toArray(new String[0]), REQUEST_PERMISSIONS);
+            String[] arr = requestingPermissions.toArray(new String[0]);
+            ActivityCompat.requestPermissions(this, arr, REQUEST_PERMISSIONS);
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        check();
-        handlePermissionResult();
+        requestingPermissions.clear();
+        requestPermissions();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (REQUEST_PERMISSIONS_SETTINGS == requestCode) {
-            check();
-            handlePermissionResult();
+            requestingPermissions.clear();
+            requestPermissions();
         } else if (REQUEST_STORAGE_MANAGER == requestCode) {
-            check();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if (Environment.isExternalStorageManager()) {
-                    granted.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
-                    rejected.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
-                    if (rejected.size() > 0) {
-                        requestPermissions();
-                    } else {
-                        handlePermissionResult();
-                    }
-                } else {
-                    rejected.clear();
-                    rejected.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
-                    handlePermissionResult();
-                }
-            } else {
-                rejected.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
-                if (rejected.size() > 0) {
-                    requestPermissions();
-                } else {
-                    handlePermissionResult();
-                }
-            }
+            requestingPermissions.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+            requestPermissions();
         }
     }
 
@@ -182,26 +155,21 @@ public class PermissionActivity extends TransparentActivity {
         return ActivityCompat.checkSelfPermission(context, permission);
     }
 
-    private void check(String... exludedPermissions) {
+    private void check() {
+        check(null);
+    }
+
+    private void check(List<String> out) {
         granted.clear();
         rejected.clear();
         if (null != permissions && permissions.size() > 0) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || getApplicationInfo().targetSdkVersion < Build.VERSION_CODES.R) {
-                permissions.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
-            }
             for (String permission : permissions) {
                 if (PackageManager.PERMISSION_GRANTED == checkSelfPermission(this, permission)) {
                     granted.add(permission);
                 } else {
-                    boolean excluded = false;
-                    for (String p : exludedPermissions) {
-                        if (p.equals(permission)) {
-                            excluded = true;
-                            break;
-                        }
-                    }
-                    if (!excluded) {
-                        rejected.add(permission);
+                    rejected.add(permission);
+                    if (null != out) {
+                        out.add(permission);
                     }
                 }
             }
