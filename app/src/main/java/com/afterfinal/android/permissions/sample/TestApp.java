@@ -1,6 +1,8 @@
-package com.afterfinal.android.permissions;
+package com.afterfinal.android.permissions.sample;
 
 import android.app.Application;
+
+import com.afterfinal.android.permissions.Permissions;
 
 public class TestApp extends Application {
     @Override

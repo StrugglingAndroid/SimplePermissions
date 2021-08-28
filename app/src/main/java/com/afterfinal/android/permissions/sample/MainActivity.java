@@ -1,13 +1,13 @@
-package com.afterfinal.android.permissions;
-
-import androidx.appcompat.app.AppCompatActivity;
+package com.afterfinal.android.permissions.sample;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.os.Bundle;
 import android.widget.Toast;
 
-import java.util.List;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.afterfinal.android.permissions.RequestPermissions;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -28,6 +28,5 @@ public class MainActivity extends AppCompatActivity {
     @RequestPermissions({Manifest.permission.READ_CONTACTS, Manifest.permission.MANAGE_EXTERNAL_STORAGE, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.SYSTEM_ALERT_WINDOW, Manifest.permission.READ_PHONE_STATE})
     private void toast() {
         Toast.makeText(getApplicationContext(), "权限申请完毕", Toast.LENGTH_SHORT).show();
-        BluetoothAdapter.getDefaultAdapter().enable();
     }
 }

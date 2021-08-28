@@ -10,8 +10,6 @@ import android.os.Environment;
 
 import androidx.core.app.ActivityCompat;
 
-import com.afterfinal.android.permissions.api.R;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;

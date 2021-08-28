@@ -18,9 +18,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 
-import com.afterfinal.android.permissions.api.R;
-
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
