@@ -6,6 +6,7 @@ import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Environment;
 
 import androidx.core.app.ActivityCompat;
@@ -70,7 +71,7 @@ public class Permissions {
             if (Manifest.permission.SYSTEM_ALERT_WINDOW.equals(permission) && !SystemAlertPermission.hasPermission(context)) {
                 granted = false;
                 break;
-            } else if (Manifest.permission.MANAGE_EXTERNAL_STORAGE.equals(permission) && !Environment.isExternalStorageManager()) {
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context.getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R && Manifest.permission.MANAGE_EXTERNAL_STORAGE.equals(permission) && !Environment.isExternalStorageManager()) {
                 granted = false;
                 break;
             } else if (PackageManager.PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, permission)) {
