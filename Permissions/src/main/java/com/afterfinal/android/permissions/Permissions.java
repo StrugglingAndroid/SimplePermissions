@@ -74,9 +74,14 @@ public class Permissions {
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context.getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R && Manifest.permission.MANAGE_EXTERNAL_STORAGE.equals(permission) && !Environment.isExternalStorageManager()) {
                 granted = false;
                 break;
-            } else if (PackageManager.PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, permission)) {
-                granted = false;
-                break;
+            } else {
+                if (Manifest.permission.MANAGE_EXTERNAL_STORAGE.equals(permission)) {
+                    permission = Manifest.permission.WRITE_EXTERNAL_STORAGE;
+                }
+                if (PackageManager.PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, permission)) {
+                    granted = false;
+                    break;
+                }
             }
         }
         if (granted) {
