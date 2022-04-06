@@ -65,7 +65,32 @@ public class Permissions {
         request(sContext, null, callback, permissions);
     }
 
+    public static void request(Context context, Callback callback, String... permissions) {
+        request(context, null, callback, permissions);
+    }
+
     public static void request(Context context, Options options, Callback callback, String... permissions) {
+        if (hasPermissions(context, permissions)) {
+            callback.onResult(options, Arrays.asList(permissions), new ArrayList<String>());
+            return;
+        }
+        String callbackId = genId(callback);
+        callbackMap.put(callbackId, callback);
+        Intent intent = new Intent(context, PermissionActivity.class);
+        intent.putExtra(KEY_CALLBACK_ID, callbackId);
+        intent.putExtra(KEY_OPTIONS, options);
+        intent.putExtra(KEY_PERMISSIONS, permissions);
+        if (!(context instanceof Activity)) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+        context.startActivity(intent);
+    }
+
+    public static boolean hasPermissions(String... permissions) {
+        return hasPermissions(sContext, permissions);
+    }
+
+    public static boolean hasPermissions(Context context, String... permissions) {
         boolean granted = true;
         for (String permission : permissions) {
             if (Manifest.permission.SYSTEM_ALERT_WINDOW.equals(permission) && !SystemAlertPermission.hasPermission(context)) {
@@ -84,20 +109,7 @@ public class Permissions {
                 }
             }
         }
-        if (granted) {
-            callback.onResult(options, Arrays.asList(permissions), new ArrayList<String>());
-            return;
-        }
-        String callbackId = genId(callback);
-        callbackMap.put(callbackId, callback);
-        Intent intent = new Intent(context, PermissionActivity.class);
-        intent.putExtra(KEY_CALLBACK_ID, callbackId);
-        intent.putExtra(KEY_OPTIONS, options);
-        intent.putExtra(KEY_PERMISSIONS, permissions);
-        if (!(context instanceof Activity)) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        }
-        context.startActivity(intent);
+        return granted;
     }
 
     private static String genId(Callback callback) {
