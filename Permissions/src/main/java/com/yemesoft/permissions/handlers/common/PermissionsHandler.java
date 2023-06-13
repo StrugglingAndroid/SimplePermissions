@@ -8,6 +8,6 @@ import com.yemesoft.permissions.PermissionRequestHandler;
 public class PermissionsHandler extends PermissionRequestHandler {
     @Override
     public void handle(Context context, PermissionCallback callback) {
-
+        PermissionsActivity.request(context, callback, permissions.toArray(new String[0]));
     }
 }
