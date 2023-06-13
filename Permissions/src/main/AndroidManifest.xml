@@ -1,14 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.afterfinal.android.permissions">
+    package="com.yemesoft.permissions">
 
     <application>
-        <activity
-            android:name="com.afterfinal.android.permissions.PermissionActivity"
-            android:launchMode="singleTop"
-            android:theme="@style/Permissions.Transparent" />
-        <activity
-            android:name="com.afterfinal.android.permissions.SystemAlertPermissionActivity"
-            android:launchMode="singleTop"
-            android:theme="@style/Permissions.Transparent" />
+        <activity android:name=".handlers.common.PermissionActivity"
+            android:theme="@style/Permissions.Transparent"
+            android:launchMode="singleTop" />
     </application>
 </manifest>

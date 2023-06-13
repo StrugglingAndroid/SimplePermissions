@@ -1,13 +1,12 @@
 package com.afterfinal.android.permissions.sample;
 
 import android.Manifest;
-import android.bluetooth.BluetoothAdapter;
 import android.os.Bundle;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.afterfinal.android.permissions.RequestPermissions;
+import com.yemesoft.permissions.RequestPermissions;
 
 public class MainActivity extends AppCompatActivity {
 
