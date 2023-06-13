@@ -10,10 +10,10 @@ import androidx.annotation.Nullable;
 import com.yemesoft.permissions.OnePixActivity;
 import com.yemesoft.permissions.PermissionCallback;
 
-public class PermissionActivity extends OnePixActivity {
+public class PermissionsActivity extends OnePixActivity {
 
     public static void request(Context context, PermissionCallback callback, String... permissions) {
-        Intent intent = new Intent(context, PermissionActivity.class);
+        Intent intent = new Intent(context, PermissionsActivity.class);
         if (!(context instanceof Activity)) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         }

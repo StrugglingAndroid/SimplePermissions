@@ -2,7 +2,7 @@
     package="com.yemesoft.permissions">
 
     <application>
-        <activity android:name=".handlers.common.PermissionActivity"
+        <activity android:name=".handlers.common.PermissionsActivity"
             android:theme="@style/Permissions.Transparent"
             android:launchMode="singleTop" />
     </application>

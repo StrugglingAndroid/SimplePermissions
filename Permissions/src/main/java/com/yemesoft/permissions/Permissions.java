@@ -3,7 +3,7 @@ package com.yemesoft.permissions;
 import android.Manifest;
 import android.content.Context;
 
-import com.yemesoft.permissions.handlers.common.CommonPermissionRequestHandler;
+import com.yemesoft.permissions.handlers.common.PermissionsHandler;
 import com.yemesoft.permissions.handlers.floatwindow.FloatHandler;
 import com.yemesoft.permissions.handlers.storage.StorageHandler;
 
@@ -21,13 +21,13 @@ public class Permissions {
         handlerMap.put(Manifest.permission.SYSTEM_ALERT_WINDOW, FloatHandler.class);
     }
 
-    static List<PermissionRequestHandler> getHandlers(String... permissions) {
+    private static List<PermissionRequestHandler> getHandlers(String... permissions) {
         try {
             Map<Class<? extends PermissionRequestHandler>, PermissionRequestHandler> map = new LinkedHashMap<>();
             for (String permission : permissions) {
                 Class<? extends PermissionRequestHandler> handlerClass = handlerMap.get(permission);
                 if (null == handlerClass) {
-                    handlerClass = CommonPermissionRequestHandler.class;
+                    handlerClass = PermissionsHandler.class;
                 }
                 PermissionRequestHandler handler = map.get(handlerClass);
                 if (null == handler) {
