@@ -14,11 +14,21 @@ import java.util.List;
 import java.util.Map;
 
 public class Permissions {
+    public static final String SYSTEM_OVERLAY_WINDOW = "android.permission.SYSTEM_OVERLAY_WINDOW";
     private static final Map<String, Class<? extends PermissionRequestHandler>> handlerMap = new HashMap<>();
 
     static {
         handlerMap.put(Manifest.permission.WRITE_EXTERNAL_STORAGE, StorageHandler.class);
+        handlerMap.put(Manifest.permission.READ_EXTERNAL_STORAGE, StorageHandler.class);
+        handlerMap.put(Manifest.permission.MANAGE_EXTERNAL_STORAGE, StorageHandler.class);
+        handlerMap.put(Manifest.permission.READ_MEDIA_AUDIO, StorageHandler.class);
+        handlerMap.put(Manifest.permission.READ_MEDIA_VIDEO, StorageHandler.class);
+        handlerMap.put(Manifest.permission.READ_MEDIA_IMAGES, StorageHandler.class);
+
         handlerMap.put(Manifest.permission.SYSTEM_ALERT_WINDOW, FloatHandler.class);
+        handlerMap.put(Permissions.SYSTEM_OVERLAY_WINDOW, FloatHandler.class);
+
+        handlerMap.put(Manifest.permission.POST_NOTIFICATIONS, FloatHandler.class);
     }
 
     private static List<PermissionRequestHandler> getHandlers(String... permissions) {

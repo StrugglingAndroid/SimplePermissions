@@ -1,9 +1,24 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.yemesoft.permissions">
+    <!--
+        <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+        <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+        <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+        <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
+        <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+        <uses-permission android:name="android.permission.SYSTEM_OVERLAY_WINDOW" />
+
+        <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+        <uses-permissionandroid:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    -->
     <application>
-        <activity android:name=".handlers.common.PermissionsActivity"
-            android:theme="@style/Permissions.Transparent"
-            android:launchMode="singleTop" />
+        <activity
+            android:name=".handlers.common.PermissionsActivity"
+            android:launchMode="singleTop"
+            android:theme="@style/Permissions.Transparent" />
+        <activity android:name=".handlers.floatwindow.FloatPermissionActivity" />
     </application>
 </manifest>
