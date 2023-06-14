@@ -15,10 +15,21 @@
         <uses-permissionandroid:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     -->
     <application>
+
+        <activity android:name=".OnePixActivity" />
+
         <activity
             android:name=".handlers.common.PermissionsActivity"
             android:launchMode="singleTop"
             android:theme="@style/Permissions.Transparent" />
-        <activity android:name=".handlers.floatwindow.FloatPermissionActivity" />
+        <activity
+            android:name=".handlers.floatwindow.FloatPermissionActivity"
+            android:theme="@style/Permissions.Transparent" />
+        <activity
+            android:name=".handlers.storage.ExternalStoragePermissionActivity"
+            android:theme="@style/Permissions.Transparent" />
+        <activity
+            android:name=".DescriptionActivity"
+            android:theme="@style/Permissions.Description.Transparent" />
     </application>
 </manifest>

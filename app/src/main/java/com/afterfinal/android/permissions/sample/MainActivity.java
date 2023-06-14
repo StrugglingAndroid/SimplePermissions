@@ -2,6 +2,7 @@ package com.afterfinal.android.permissions.sample;
 
 import android.Manifest;
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -17,11 +18,16 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Permissions.request(this, new PermissionCallback() {
+    }
+
+    public void requestPermission(View view) {
+
+        Permissions.request(this, new String[]{"测试权限申请"}, new PermissionCallback() {
             @Override
             public void onComplete(List<String> granted, List<String> rejected) {
 
             }
         }, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_PHONE_STATE, Manifest.permission.SYSTEM_ALERT_WINDOW, Manifest.permission.POST_NOTIFICATIONS);
+
     }
 }

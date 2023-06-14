@@ -2,6 +2,7 @@ package com.yemesoft.permissions;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 
 import com.yemesoft.permissions.handlers.common.PermissionsHandler;
 import com.yemesoft.permissions.handlers.floatwindow.FloatHandler;
@@ -54,8 +55,18 @@ public class Permissions {
     }
 
     public static void request(Context context, PermissionCallback callback, String... permissions) {
-        List<PermissionRequestHandler> handlers = getHandlers(permissions);
-        processHandler(handlers, 0, context, new ArrayList<String>(), new ArrayList<String>(), callback);
+        request(context, null, callback, permissions);
+    }
+
+    public static void request(Context context, String[] descriptions, PermissionCallback callback, String... permissions) {
+        if (null != descriptions) {
+
+            context.startActivity(new Intent(context, OnePixActivity.class));
+//            DescriptionActivity.start(context, descriptions, callback, permissions);
+        } else {
+            List<PermissionRequestHandler> handlers = getHandlers(permissions);
+            processHandler(handlers, 0, context, new ArrayList<String>(), new ArrayList<String>(), callback);
+        }
     }
 
     private static void processHandler(final List<PermissionRequestHandler> handlers, final int index, final Context context, final List<String> granted, final List<String> rejected, final PermissionCallback callback) {
