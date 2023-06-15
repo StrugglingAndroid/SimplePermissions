@@ -43,6 +43,7 @@ public class DescriptionActivity extends OnePixActivity {
         if (null != descriptions) {
             LinearLayout layout = new LinearLayout(this);
             layout.setOrientation(LinearLayout.VERTICAL);
+            layout.setFitsSystemWindows(true);
             setContentView(layout);
             for (String description : descriptions) {
                 TextView textView = new TextView(this);

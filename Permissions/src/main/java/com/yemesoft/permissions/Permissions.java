@@ -32,7 +32,7 @@ public class Permissions {
         handlerMap.put(Manifest.permission.POST_NOTIFICATIONS, FloatHandler.class);
     }
 
-    private static List<PermissionRequestHandler> getHandlers(String... permissions) {
+    private static List<PermissionRequestHandler> getHandlers(Context context, String... permissions) {
         try {
             Map<Class<? extends PermissionRequestHandler>, PermissionRequestHandler> map = new LinkedHashMap<>();
             for (String permission : permissions) {
@@ -45,7 +45,7 @@ public class Permissions {
                     handler = handlerClass.newInstance();
                     map.put(handlerClass, handler);
                 }
-                handler.addPermission(permission);
+                handler.addPermission(context, permission);
             }
             return new ArrayList<>(map.values());
         } catch (Exception e) {
@@ -59,10 +59,22 @@ public class Permissions {
     }
 
     public static void request(Context context, String[] descriptions, PermissionCallback callback, String... permissions) {
+        List<PermissionRequestHandler> handlers = getHandlers(context, permissions);
+        if (0 == handlers.size()) {
+            callback.onComplete(new ArrayList<String>(), new ArrayList<String>());
+            return;
+        }
+        for (int i = handlers.size() - 1; i >= 0; i--) {
+            PermissionRequestHandler handler = handlers.get(i);
+            if (handler.hasAllPermissions(context)) {
+                handlers.remove(i);
+            }
+        }
+        boolean hasAllPermissions = true;
+
         if (null != descriptions) {
             DescriptionActivity.start(context, descriptions, callback, permissions);
         } else {
-            List<PermissionRequestHandler> handlers = getHandlers(permissions);
             processHandler(handlers, 0, context, new ArrayList<String>(), new ArrayList<String>(), callback);
         }
     }
