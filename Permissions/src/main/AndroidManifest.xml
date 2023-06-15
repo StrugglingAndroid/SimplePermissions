@@ -16,7 +16,9 @@
     -->
     <application>
 
-        <activity android:name=".OnePixActivity" />
+        <activity
+            android:name=".OnePixActivity"
+            android:theme="@style/Permissions.Transparent" />
 
         <activity
             android:name=".handlers.common.PermissionsActivity"

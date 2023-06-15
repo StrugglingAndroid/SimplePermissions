@@ -51,8 +51,7 @@ public class DescriptionActivity extends OnePixActivity {
             }
         }
 
-//        Permissions.request(this, permissionCallback, permissions);
-
-        startActivity(new Intent(this, OnePixActivity.class));
+        Permissions.request(this, permissionCallback, permissions);
+//        startActivity(new Intent(this, OnePixActivity.class));
     }
 }

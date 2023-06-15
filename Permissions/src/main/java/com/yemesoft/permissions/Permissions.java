@@ -60,9 +60,7 @@ public class Permissions {
 
     public static void request(Context context, String[] descriptions, PermissionCallback callback, String... permissions) {
         if (null != descriptions) {
-
-            context.startActivity(new Intent(context, OnePixActivity.class));
-//            DescriptionActivity.start(context, descriptions, callback, permissions);
+            DescriptionActivity.start(context, descriptions, callback, permissions);
         } else {
             List<PermissionRequestHandler> handlers = getHandlers(permissions);
             processHandler(handlers, 0, context, new ArrayList<String>(), new ArrayList<String>(), callback);
