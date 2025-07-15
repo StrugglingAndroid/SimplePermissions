@@ -1,0 +1,50 @@
+apply plugin: 'maven-publish'
+
+def isAndroid = project.hasProperty('android')
+if (isAndroid) {
+    project.android.publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+def ALI_MAVEN_USERNAME = localProperties.getProperty('ALI_MAVEN_USERNAME')
+def ALI_MAVEN_PASSWORD = localProperties.getProperty('ALI_MAVEN_PASSWORD')
+
+afterEvaluate {
+    println("Components❤❤❤: " + components*.name)
+    publishing {
+        publications {
+            "release"(MavenPublication) {
+                groupId = project.property('LIB_GROUP_ID')
+                artifactId = project.property('LIB_ARTIFACT_ID')
+                version = rootProject.property('LIB_VERSION_NAME')
+                from isAndroid ? components.release : components.java
+
+                // 生成 pom 文件
+                pom.withXml {
+
+                }
+            }
+        }
+        repositories {
+//            mavenLocal()
+//            maven { url = uri("../local-repo") }
+            maven {
+//                url = "https://maven.aliyun.com/repository/public"
+                url = "https://packages.aliyun.com/60f4e4e44c3c54cc1d598467/maven/2121958-release-sqkcdi"
+                credentials {
+                    username = ALI_MAVEN_USERNAME
+                    password = ALI_MAVEN_PASSWORD
+                }
+            }
+        }
+    }
+}
