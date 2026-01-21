@@ -1,11 +1,10 @@
-package com.dlkw.permissions.library;
+package com.dlkw.permissions;
 
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
@@ -16,6 +15,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
+
+import com.dlkw.permissions.library.R;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -162,9 +163,22 @@ public class PermissionActivity extends Activity {
                 tempPermissionSet.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
                 requestPermissions();
             } else {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQ_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                callback.onShowConfirmDialog(this, "您的手机没有授予文件管理权限，请开启后再试", new OnConfirmListener() {
+
+                    @Override
+                    public void onConfirm() {
+                        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
+                        startActivityForResult(intent, REQ_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        rejected.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+                        tempPermissionSet.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+                        requestPermissions();
+                    }
+                });
             }
         } else if (tempPermissionSet.contains(Manifest.permission.SYSTEM_ALERT_WINDOW)) {
             if (Settings.canDrawOverlays(getApplicationContext())) {
@@ -172,9 +186,20 @@ public class PermissionActivity extends Activity {
                 tempPermissionSet.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
                 requestPermissions();
             } else {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQ_MANAGE_OVERLAY_PERMISSION);
+                callback.onShowConfirmDialog(this, "您的手机没有授予悬浮窗权限，请开启后再试", new OnConfirmListener() {
+
+                    @Override
+                    public void onConfirm() {
+                        FloatWindowUtil.applyPermission(PermissionActivity.this, REQ_MANAGE_OVERLAY_PERMISSION);
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        rejected.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
+                        tempPermissionSet.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
+                        requestPermissions();
+                    }
+                });
             }
         } else {
             ActivityCompat.requestPermissions(this, tempPermissionSet.toArray(new String[0]), REQ_REUQEST_NORMAL_PERMISSIONS);

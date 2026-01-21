@@ -1,16 +1,14 @@
-package com.dlkw.permissions.library;
+package com.dlkw.permissions;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Environment;
-import android.provider.Settings;
-import android.view.View;
-import android.view.WindowManager;
 
 import androidx.core.app.ActivityCompat;
 
@@ -31,6 +29,19 @@ public class Permission {
 
     public interface Callback<T> {
         void onResult(List<String> granted, List<String> rejected, T extras);
+
+        default void onShowConfirmDialog(Context context, String message, OnConfirmListener listener) {
+            new AlertDialog.Builder(context).setCancelable(true)
+                    .setTitle("权限申请提示")
+                    .setMessage(message)
+                    .setPositiveButton("现在去开启", (dialog, which) -> {
+                        listener.onConfirm();
+                        dialog.dismiss();
+                    }).setNegativeButton("暂不开启", (dialog, which) -> {
+                        listener.onCancel();
+                        dialog.dismiss();
+                    }).show();
+        }
     }
 
     static final String KEY_CALLBACK_ID = "KEY_CALLBACK_ID";
@@ -82,24 +93,15 @@ public class Permission {
             }
             context.startActivity(intent);
         } catch (Exception e) {
-            e.printStackTrace();
+            List<String> rejected = new ArrayList<>();
+            Collections.addAll(rejected, permissions);
+            callback.onResult(Collections.emptyList(), rejected, extras);
         }
 
     }
 
     static boolean hasFloatingWindowPermission(Context context) {
-        try {
-            if (Settings.canDrawOverlays(context)) {
-                return true;
-            }
-            WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-            View view = new View(context);
-            windowManager.addView(view, new WindowManager.LayoutParams());
-            windowManager.removeView(view);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+        return FloatWindowUtil.checkPermission(context);
     }
 
     static boolean hasPermission(Context context, String permission) {
