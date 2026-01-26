@@ -144,6 +144,12 @@ public class Permission {
         } else {
             permissionSet.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
         }
+        if (permissionSet.contains(Manifest.permission.WRITE_EXTERNAL_STORAGE) || permissionSet.contains(Manifest.permission.READ_EXTERNAL_STORAGE)
+                || permissionSet.contains(Manifest.permission.MANAGE_EXTERNAL_STORAGE)) {
+            permissionSet.add(Manifest.permission.READ_MEDIA_IMAGES);
+            permissionSet.add(Manifest.permission.READ_MEDIA_AUDIO);
+            permissionSet.add(Manifest.permission.READ_MEDIA_VIDEO);
+        }
         if (permissionSet.contains(Manifest.permission.BLUETOOTH) || permissionSet.contains(Manifest.permission.BLUETOOTH_ADMIN)) {
             permissionSet.add(Manifest.permission.ACCESS_COARSE_LOCATION);
             permissionSet.add(Manifest.permission.ACCESS_FINE_LOCATION);
