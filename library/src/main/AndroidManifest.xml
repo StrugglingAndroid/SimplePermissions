@@ -3,7 +3,7 @@
 
     <application>
         <activity
-            android:name="com.dlkw.permissions.library.com.dlkw.permissions.PermissionActivity"
+            android:name="com.dlkw.permissions.PermissionActivity"
             android:theme="@style/Theme.PermissionActivity" />
     </application>
 </manifest>
