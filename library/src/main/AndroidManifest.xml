@@ -4,6 +4,6 @@
     <application>
         <activity
             android:name="com.dlkw.permissions.PermissionActivity"
-            android:theme="@style/Theme.PermissionActivity" />
+            android:theme="@style/SP.Theme.PermissionActivity" />
     </application>
 </manifest>

@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -30,8 +31,9 @@ public class Permission {
     public interface Callback<T> {
         void onResult(List<String> granted, List<String> rejected, T extras);
 
-        default void onShowConfirmDialog(Context context, String message, OnConfirmListener listener) {
-            new AlertDialog.Builder(context).setCancelable(true)
+        default void onShowConfirmDialog(Activity context, String message, OnConfirmListener listener) {
+            new AlertDialog.Builder(context)
+                    .setCancelable(false)
                     .setTitle("权限申请提示")
                     .setMessage(message)
                     .setPositiveButton("现在去开启", (dialog, which) -> {
@@ -40,7 +42,8 @@ public class Permission {
                     }).setNegativeButton("暂不开启", (dialog, which) -> {
                         listener.onCancel();
                         dialog.dismiss();
-                    }).show();
+                    })
+                    .show();
         }
     }
 

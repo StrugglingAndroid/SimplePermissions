@@ -15,8 +15,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
-
-import com.dlkw.permissions.library.R;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,7 +40,13 @@ public class PermissionActivity extends Activity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_permission1);
+        setContentView(R.layout.sp_activity_permission);
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.sp_main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
         try {
             String callbackId = getIntent().getStringExtra(Permission.KEY_CALLBACK_ID);
