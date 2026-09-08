@@ -47,6 +47,58 @@ public final class PermissionSettings {
     }
 
     /**
+     * Opens the app notification settings page (API 26+ channel settings; older → app details).
+     *
+     * @return true if an activity was started
+     */
+    public static boolean openNotificationSettings(Activity activity, int requestCode) {
+        if (activity == null || activity.isFinishing()) {
+            return false;
+        }
+        try {
+            Intent intent;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE, activity.getPackageName());
+            } else {
+                intent = new Intent("android.settings.APP_NOTIFICATION_SETTINGS");
+                intent.putExtra("app_package", activity.getPackageName());
+                intent.putExtra("app_uid", activity.getApplicationInfo().uid);
+            }
+            if (canHandle(activity, intent)) {
+                activity.startActivityForResult(intent, requestCode);
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+        return openAppPermissionSettings(activity, requestCode);
+    }
+
+    /**
+     * Opens exact-alarm permission settings (API 31+).
+     *
+     * @return true if an activity was started
+     */
+    public static boolean openExactAlarmSettings(Activity activity, int requestCode) {
+        if (activity == null || activity.isFinishing()) {
+            return false;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return false;
+        }
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+            intent.setData(Uri.parse("package:" + activity.getPackageName()));
+            if (canHandle(activity, intent)) {
+                activity.startActivityForResult(intent, requestCode);
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+        return openAppPermissionSettings(activity, requestCode);
+    }
+
+    /**
      * Opens app permission settings without expecting a result (e.g. from a non-Activity context).
      */
     public static void openAppPermissionSettings(Context context) {

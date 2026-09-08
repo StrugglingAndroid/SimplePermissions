@@ -2,18 +2,20 @@
 
 轻量 Android 运行时权限库（Java）。通过透明 `Activity` + Callback 申请权限，自动适配存储 / 媒体 / 蓝牙 / 通知等版本差异，并处理「拒绝且不再询问」引导跳转设置页。
 
-- **坐标**：`com.gitee.yemesoft:simple-permissions:1.5.9`
+- **坐标**：`com.gitee.yemesoft:simple-permissions:1.6.0`
 - **minSdk**：23（Android 6.0+）
 - **compileSdk**：35
 - **兼容目标**：Android 7.0 – 当前主流版本；国内主流机型、三星、谷歌
 
 ## 特性
 
-- Callback 申请，支持透传 `extras`
+- 跨版本权限自动映射 / 升级 / 降级：存储、媒体、蓝牙、通知、精确闹钟、附近 Wi‑Fi、身体活动、电话号码等
+- Callback 申请，支持透传 `extras`；结果按**调用方原始权限名**回报
 - 区分 **临时拒绝** / **永久拒绝（不再询问）**
 - 默认在永久拒绝后弹确认框并跳转应用权限设置（可关闭）
+- 默认将传统 `READ/WRITE` 在 Android 11+ 自动升级为 `MANAGE`（可关闭，改走 `READ_MEDIA_*`）
 - OEM 设置页适配：小米 / 华为 / 荣耀 / OPPO / realme / 一加 / vivo / iQOO / 魅族；三星与谷歌走应用详情兜底
-- 特殊权限：全部文件访问、悬浮窗、安装未知应用（走设置页）
+- 特殊权限：全部文件访问、悬浮窗、安装未知应用、通知开关（API&lt;33）、精确闹钟（走设置页）
 - 后台定位在前台定位通过后单独申请
 - Android 14 部分相册授权视为媒体可读
 - 支持自定义权限说明页（推荐返回任意 View，无 id 约束；未自定义用默认样式）
@@ -23,7 +25,7 @@
 在宿主 `build.gradle` 中添加依赖（按你实际的 Maven 仓库配置）：
 
 ```gradle
-implementation 'com.gitee.yemesoft:simple-permissions:1.5.9'
+implementation 'com.gitee.yemesoft:simple-permissions:1.6.0'
 ```
 
 在 `AndroidManifest.xml` 中声明你要申请的权限（库本身不替宿主声明业务权限）。
@@ -140,14 +142,15 @@ Permission.request(this, "需要定位权限", requestId, new Permission.Callbac
 | API | 说明 |
 |-----|------|
 | `Permission.setAutoGuideOnPermanentDenied(true/false)` | 默认 `true`：永久拒绝后弹框引导去设置；设为 `false` 则仅回调，由业务自行处理 |
+| `Permission.setAutoUpgradeStorageToManage(true/false)` | 默认 `true`：传统 `READ/WRITE` 在 Android 11+ 升级为 `MANAGE`；`false` 则 API 33+ 走 `READ_MEDIA_*`（更适合上架 / 最小权限） |
 | `Permission.isPermanentlyDenied(activity, permission)` | 判断某权限是否已永久拒绝 |
 | `Permission.openAppPermissionSettings(context)` | 手动打开应用权限设置页（OEM 感知） |
 
 流程简述：
 
 1. 用户拒绝且不再询问 → 进入 `permanentlyDenied`
-2. 若开启自动引导 → 确认框 → 跳转设置页 → 返回后复核并回调
-3. 再次 `request` 时若已永久拒绝，会跳过无意义的系统弹窗，直接引导设置
+2. 若开启自动引导 → 确认框（列出权限名）→ 跳转设置页 → 返回后复核并回调
+3. 再次 `request` 时会重新向系统核对；已在设置中开启的会直接视为授权
 
 自定义确认框文案 / 样式：覆盖 `Callback.onShowConfirmDialog`。
 
@@ -161,20 +164,48 @@ if (Permission.hasAllPermissions(context,
 }
 ```
 
-## 版本与特殊权限说明
+`hasPermission` / `hasAllPermissions` 同样做跨版本等价判断（例如低版本用 `WRITE` 满足 `READ_MEDIA_IMAGES`，高版本用 `READ_MEDIA_*` 或 `MANAGE` 满足传统存储名）。
 
-库会在内部按 `SDK_INT` / `targetSdk` 做适配，**不会**把普通读写存储强行升级为「所有文件访问」。
+## 跨版本自动映射（可随意组合）
+
+调用方无需关心 API 差异，可任意混用旧存储名、媒体名、`MANAGE` 等；库会改写成当前设备真正该申请的权限，回调仍返回你传入的原始权限名。
+
+### 存储（默认自动升级 MANAGE）
+
+| 调用方申请 | 行为（`setAutoUpgradeStorageToManage(true)`，默认） | 关闭升级后（`false`） |
+|------------|-----------------------------------------------------|------------------------|
+| `READ/WRITE_EXTERNAL_STORAGE` | API 30+ → `MANAGE`（所有文件访问设置）；更低 → 传统存储 | API 33+ → `READ_MEDIA_*`；更低 → 传统存储 |
+| `READ_MEDIA_*`（未混传 READ/WRITE） | API &lt; 33 → 传统存储；API 33+ 按类型申请 | 同左（**不会**因开关升级为 MANAGE） |
+| `MANAGE_EXTERNAL_STORAGE` | API 30+ 设置页；更低 → `READ/WRITE` | 同左 |
+| `MANAGE` + `WRITE` 等同批 | 只走 `MANAGE`（去掉不可授予的 `WRITE`，避免误判「不再询问」） | 同左 |
+
+上架 / 仅访问相册视频音频时，建议：
+
+```java
+Permission.setAutoUpgradeStorageToManage(false);
+```
+
+### 其它常见权限
+
+| 调用方申请 | 低版本 | 高版本 |
+|------------|--------|--------|
+| `POST_NOTIFICATIONS` | 检测通知总开关；未开则引导通知设置页 | 运行时申请 |
+| `SCHEDULE_EXACT_ALARM` | 视为已具备（&lt; API 31） | 确认框 → 精确闹钟设置 |
+| 蓝牙经典名 / 新名 | 互转；经典名常附带定位 | SCAN/CONNECT/ADVERTISE |
+| `NEARBY_WIFI_DEVICES` | → 定位 | 运行时申请（API 33+） |
+| `ACTIVITY_RECOGNITION` | 视为已具备（&lt; Q） | 运行时申请 |
+| `READ_PHONE_NUMBERS` | → `READ_PHONE_STATE`（&lt; O） | 运行时申请 |
+| `ACCESS_BACKGROUND_LOCATION` | 低于 Q 时按前台定位处理 | 前台通过后再单独申请 |
+
+## 特殊权限路径
 
 | 场景 | 行为 |
 |------|------|
-| 普通存储 / 媒体 | API 33+ 映射为 `READ_MEDIA_*`；低版本用传统存储权限 |
-| `MANAGE_EXTERNAL_STORAGE` | 仅 API 30+ 且显式申请时走全部文件设置页 |
+| `MANAGE_EXTERNAL_STORAGE` | API 30+ 确认框 → 所有文件访问设置 |
 | `SYSTEM_ALERT_WINDOW` | 确认框 → 悬浮窗设置（魅族有专用页） |
 | `REQUEST_INSTALL_PACKAGES` | 确认框 → 安装未知应用设置 |
-| `ACCESS_BACKGROUND_LOCATION` | 须先有前台定位，再单独申请 |
-| `POST_NOTIFICATIONS` | 仅 API 33+ 作为运行时权限 |
-| 蓝牙 | API 31+ 使用 SCAN/CONNECT/ADVERTISE；低版本附带定位依赖 |
-
+| `POST_NOTIFICATIONS`（API &lt; 33） | 确认框 → 应用通知设置 |
+| `SCHEDULE_EXACT_ALARM`（API 31+） | 确认框 → 精确闹钟设置 |
 ## 注意事项
 
 1. **权限须在宿主 Manifest 中声明**，否则系统会直接拒绝。

@@ -34,6 +34,8 @@ public class PermissionActivity extends Activity {
     private static final int REQ_MANAGE_UNKNOWN_APP_SOURCES = 0x7037;
     private static final int REQ_APP_PERMISSION_SETTINGS = 0x7038;
     private static final int REQ_BACKGROUND_LOCATION = 0x7039;
+    private static final int REQ_NOTIFICATION_SETTINGS = 0x703A;
+    private static final int REQ_EXACT_ALARM_SETTINGS = 0x703B;
 
     private static final String STATE_CALLBACK_ID = "sp_state_callback_id";
     private static final String STATE_RESULT_DISPATCHED = "sp_state_result_dispatched";
@@ -382,6 +384,22 @@ public class PermissionActivity extends Activity {
                 addRejected(Manifest.permission.REQUEST_INSTALL_PACKAGES);
             }
             requestPermissions();
+        } else if (REQ_NOTIFICATION_SETTINGS == requestCode) {
+            tempPermissionSet.remove(Manifest.permission.POST_NOTIFICATIONS);
+            if (Permission.hasNotificationPermission(this)) {
+                addGranted(Manifest.permission.POST_NOTIFICATIONS);
+            } else {
+                addRejected(Manifest.permission.POST_NOTIFICATIONS);
+            }
+            requestPermissions();
+        } else if (REQ_EXACT_ALARM_SETTINGS == requestCode) {
+            tempPermissionSet.remove(Manifest.permission.SCHEDULE_EXACT_ALARM);
+            if (Permission.hasPermission(this, Manifest.permission.SCHEDULE_EXACT_ALARM)) {
+                addGranted(Manifest.permission.SCHEDULE_EXACT_ALARM);
+            } else {
+                addRejected(Manifest.permission.SCHEDULE_EXACT_ALARM);
+            }
+            requestPermissions();
         } else if (REQ_APP_PERMISSION_SETTINGS == requestCode) {
             recheckAfterSettings();
             // Re-ask the system for anything still missing. After the user grants in
@@ -474,6 +492,8 @@ public class PermissionActivity extends Activity {
             if (requestCode == REQ_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
                     || requestCode == REQ_MANAGE_OVERLAY_PERMISSION
                     || requestCode == REQ_MANAGE_UNKNOWN_APP_SOURCES
+                    || requestCode == REQ_NOTIFICATION_SETTINGS
+                    || requestCode == REQ_EXACT_ALARM_SETTINGS
                     || requestCode == REQ_APP_PERMISSION_SETTINGS) {
                 if (waitingForSettingsResult) {
                     pendingSettingsRequestCode = requestCode;
@@ -524,7 +544,7 @@ public class PermissionActivity extends Activity {
                 && !permanentlyDenied.isEmpty()
                 && callback != null) {
             guidedPermanentDenied = true;
-            showConfirmDialog("部分权限已被禁止且不再询问，请到系统设置中开启后再试",
+            showConfirmDialog(buildPermanentDeniedMessage(),
                     new OnConfirmListener() {
                         @Override
                         public void onConfirm() {
@@ -547,6 +567,28 @@ public class PermissionActivity extends Activity {
         dispatchResultInternal();
     }
 
+    private String buildPermanentDeniedMessage() {
+        StringBuilder sb = new StringBuilder("以下权限已被禁止且不再询问，请到系统设置中开启");
+        String[] originals = callbackId != null
+                ? Permission.originalPermissionMap.get(callbackId) : null;
+        if (originals != null) {
+            List<String> outGranted = new ArrayList<>();
+            List<String> outRejected = new ArrayList<>();
+            List<String> outPermanent = new ArrayList<>();
+            Permission.mapResultsToOriginals(this, originals,
+                    granted, rejected, permanentlyDenied,
+                    outGranted, outRejected, outPermanent);
+            for (String permission : outPermanent) {
+                sb.append('\n').append(Permission.permissionLabel(permission));
+            }
+        } else {
+            for (String permission : permanentlyDenied) {
+                sb.append('\n').append(Permission.permissionLabel(permission));
+            }
+        }
+        return sb.toString();
+    }
+
     private void dispatchResultInternal() {
         if (resultDispatched) {
             return;
@@ -556,7 +598,19 @@ public class PermissionActivity extends Activity {
         destroyExplainUi();
         try {
             if (callback != null) {
-                callback.onResult(granted, rejected, permanentlyDenied, extras);
+                String[] originals = callbackId != null
+                        ? Permission.originalPermissionMap.get(callbackId) : null;
+                if (originals != null) {
+                    List<String> outGranted = new ArrayList<>();
+                    List<String> outRejected = new ArrayList<>();
+                    List<String> outPermanent = new ArrayList<>();
+                    Permission.mapResultsToOriginals(this, originals,
+                            granted, rejected, permanentlyDenied,
+                            outGranted, outRejected, outPermanent);
+                    callback.onResult(outGranted, outRejected, outPermanent, extras);
+                } else {
+                    callback.onResult(granted, rejected, permanentlyDenied, extras);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -573,6 +627,7 @@ public class PermissionActivity extends Activity {
         if (callbackId != null) {
             Permission.callbackMap.remove(callbackId);
             Permission.permissionMap.remove(callbackId);
+            Permission.originalPermissionMap.remove(callbackId);
             Permission.extraMap.remove(callbackId);
         }
     }
@@ -611,6 +666,17 @@ public class PermissionActivity extends Activity {
         }
         if (tempPermissionSet.contains(Manifest.permission.REQUEST_INSTALL_PACKAGES)) {
             handleInstallPackages();
+            return;
+        }
+        // Below API 33, notifications are AppOps / settings — not a runtime dialog.
+        if (tempPermissionSet.contains(Manifest.permission.POST_NOTIFICATIONS)
+                && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            handleNotificationSettings();
+            return;
+        }
+        if (tempPermissionSet.contains(Manifest.permission.SCHEDULE_EXACT_ALARM)
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            handleExactAlarmSettings();
             return;
         }
 
@@ -737,6 +803,66 @@ public class PermissionActivity extends Activity {
             public void onCancel() {
                 addRejected(Manifest.permission.REQUEST_INSTALL_PACKAGES);
                 tempPermissionSet.remove(Manifest.permission.REQUEST_INSTALL_PACKAGES);
+                requestPermissions();
+            }
+        });
+    }
+
+    private void handleNotificationSettings() {
+        if (Permission.hasNotificationPermission(this)) {
+            addGranted(Manifest.permission.POST_NOTIFICATIONS);
+            tempPermissionSet.remove(Manifest.permission.POST_NOTIFICATIONS);
+            requestPermissions();
+            return;
+        }
+        showConfirmDialog("您的手机没有授予通知权限，请开启后再试", new OnConfirmListener() {
+            @Override
+            public void onConfirm() {
+                markWaitingForSettings(REQ_NOTIFICATION_SETTINGS);
+                if (!PermissionSettings.openNotificationSettings(
+                        PermissionActivity.this, REQ_NOTIFICATION_SETTINGS)) {
+                    waitingForSettingsResult = false;
+                    pendingSettingsRequestCode = -1;
+                    addRejected(Manifest.permission.POST_NOTIFICATIONS);
+                    tempPermissionSet.remove(Manifest.permission.POST_NOTIFICATIONS);
+                    requestPermissions();
+                }
+            }
+
+            @Override
+            public void onCancel() {
+                addRejected(Manifest.permission.POST_NOTIFICATIONS);
+                tempPermissionSet.remove(Manifest.permission.POST_NOTIFICATIONS);
+                requestPermissions();
+            }
+        });
+    }
+
+    private void handleExactAlarmSettings() {
+        if (Permission.hasPermission(this, Manifest.permission.SCHEDULE_EXACT_ALARM)) {
+            addGranted(Manifest.permission.SCHEDULE_EXACT_ALARM);
+            tempPermissionSet.remove(Manifest.permission.SCHEDULE_EXACT_ALARM);
+            requestPermissions();
+            return;
+        }
+        showConfirmDialog("您的手机没有授予精确闹钟权限，请开启后再试", new OnConfirmListener() {
+            @Override
+            public void onConfirm() {
+                markWaitingForSettings(REQ_EXACT_ALARM_SETTINGS);
+                if (!PermissionSettings.openExactAlarmSettings(
+                        PermissionActivity.this, REQ_EXACT_ALARM_SETTINGS)) {
+                    waitingForSettingsResult = false;
+                    pendingSettingsRequestCode = -1;
+                    addRejected(Manifest.permission.SCHEDULE_EXACT_ALARM);
+                    tempPermissionSet.remove(Manifest.permission.SCHEDULE_EXACT_ALARM);
+                    requestPermissions();
+                }
+            }
+
+            @Override
+            public void onCancel() {
+                addRejected(Manifest.permission.SCHEDULE_EXACT_ALARM);
+                tempPermissionSet.remove(Manifest.permission.SCHEDULE_EXACT_ALARM);
                 requestPermissions();
             }
         });
