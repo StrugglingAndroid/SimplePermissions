@@ -57,17 +57,13 @@ public class PermissionActivity extends Activity {
     private boolean waitingForSettingsResult;
     /** True only while classifying results from {@link #onRequestPermissionsResult}. */
     private boolean classifyingFromSystemResult;
+    /** True when explain UI came from Callback / PermissionExplainUi (no id binding). */
+    private boolean usingCustomExplainUi;
+    private PermissionExplainUi activeExplainUi;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.sp_activity_permission);
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.sp_main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
 
         try {
             if (savedInstanceState != null) {
@@ -95,16 +91,21 @@ public class PermissionActivity extends Activity {
             }
 
             if (null == callbackId || null == callback) {
+                // Still need a content view before finish on some devices.
+                setContentView(new View(this));
                 finish();
                 return;
             }
 
             if (resultDispatched) {
+                setContentView(new View(this));
                 finish();
                 return;
             }
 
-            bindDescriptionUi();
+            String title = getIntent().getStringExtra(Permission.KEY_TITLE);
+            String description = getIntent().getStringExtra(Permission.KEY_DESCRIPTION);
+            installExplainUi(title, description);
 
             if (savedInstanceState == null) {
                 requestPermissions();
@@ -126,6 +127,9 @@ public class PermissionActivity extends Activity {
                 tempPermissionSet.clear();
             }
             if (callback != null && !resultDispatched) {
+                if (findViewById(android.R.id.content) == null) {
+                    setContentView(new View(this));
+                }
                 requestPermissions();
             } else {
                 finish();
@@ -133,22 +137,99 @@ public class PermissionActivity extends Activity {
         }
     }
 
-    private void bindDescriptionUi() {
+    /**
+     * Priority: Callback custom View → global {@link PermissionExplainUi} → layout res / default XML.
+     * Custom View paths do not require any library view ids.
+     */
+    private void installExplainUi(String title, String description) {
+        usingCustomExplainUi = false;
+        activeExplainUi = null;
+
+        View custom = null;
+        try {
+            custom = callback.onCreatePermissionExplainView(this, title, description);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (custom != null) {
+            setContentView(custom);
+            // Do not force insets on custom roots — callers own their layout.
+            usingCustomExplainUi = true;
+            return;
+        }
+
+        PermissionExplainUi globalUi = Permission.getPermissionExplainUi();
+        if (globalUi != null) {
+            try {
+                custom = globalUi.onCreateView(this, title, description);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            if (custom != null) {
+                setContentView(custom);
+                usingCustomExplainUi = true;
+                activeExplainUi = globalUi;
+                return;
+            }
+        }
+
+        setContentView(Permission.resolvePermissionExplainLayout());
+        applyWindowInsets(findViewById(R.id.sp_main));
+        bindDefaultDescriptionUi(title, description);
+    }
+
+    private void applyWindowInsets(View root) {
+        if (root == null) {
+            return;
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+    }
+
+    private void bindDefaultDescriptionUi(String title, String description) {
         TextView titleView = findViewById(R.id.permission_title);
         TextView descriptionView = findViewById(R.id.permission_description);
         View panelView = findViewById(R.id.permission_declare_panel);
 
-        String title = getIntent().getStringExtra(Permission.KEY_TITLE);
-        if (TextUtils.isEmpty(title)) {
-            titleView.setVisibility(View.GONE);
-        } else {
-            titleView.setText(title);
-            titleView.setVisibility(View.VISIBLE);
+        if (titleView != null) {
+            if (TextUtils.isEmpty(title)) {
+                titleView.setVisibility(View.GONE);
+            } else {
+                titleView.setText(title);
+                titleView.setVisibility(View.VISIBLE);
+            }
         }
+        if (descriptionView != null) {
+            descriptionView.setText(description == null ? "" : description);
+        }
+        if (panelView != null) {
+            panelView.setVisibility(View.VISIBLE);
+        }
+    }
 
-        String description = getIntent().getStringExtra(Permission.KEY_DESCRIPTION);
-        descriptionView.setText(description == null ? "" : description);
-        panelView.setVisibility(View.VISIBLE);
+    private void destroyExplainUi() {
+        if (!usingCustomExplainUi) {
+            return;
+        }
+        // Only notify the provider that actually supplied the View.
+        if (activeExplainUi != null) {
+            try {
+                activeExplainUi.onDestroy(this);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else if (callback != null) {
+            try {
+                callback.onDestroyPermissionExplainView(this);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        activeExplainUi = null;
+        usingCustomExplainUi = false;
     }
 
     private static void restoreList(ArrayList<String> source, List<String> target) {
@@ -365,6 +446,7 @@ public class PermissionActivity extends Activity {
         }
         resultDispatched = true;
         waitingForSettingsResult = false;
+        destroyExplainUi();
         try {
             if (callback != null) {
                 callback.onResult(granted, rejected, permanentlyDenied, extras);

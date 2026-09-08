@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Environment;
+import android.view.View;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -43,6 +44,18 @@ public class Permission {
                 allRejected.addAll(permanentlyDenied);
             }
             onResult(granted, allRejected, extras);
+        }
+
+        /**
+         * Provide a fully custom explain View (any layout / ids).
+         * Return {@code null} to use global {@link PermissionExplainUi} or the library default.
+         */
+        default View onCreatePermissionExplainView(Activity activity, String title, String description) {
+            return null;
+        }
+
+        /** Called when the permission Activity is finishing, if you created a custom explain View. */
+        default void onDestroyPermissionExplainView(Activity activity) {
         }
 
         default void onShowConfirmDialog(Activity context, String message, OnConfirmListener listener) {
@@ -85,6 +98,9 @@ public class Permission {
     static final Map<String, Object> extraMap = new ConcurrentHashMap<>();
 
     private static volatile boolean autoGuideOnPermanentDenied = true;
+    /** 0 = use library default {@code R.layout.sp_activity_permission}. */
+    private static volatile int permissionExplainLayoutRes = 0;
+    private static volatile PermissionExplainUi permissionExplainUi;
 
     /**
      * When true (default), after "Don't ask again" the library shows a confirm dialog
@@ -96,6 +112,39 @@ public class Permission {
 
     public static boolean isAutoGuideOnPermanentDenied() {
         return autoGuideOnPermanentDenied;
+    }
+
+    /**
+     * App-wide custom explain UI. Highest priority after per-request
+     * {@link Callback#onCreatePermissionExplainView}. Pass {@code null} to clear.
+     * Custom UI does <b>not</b> need to use library view ids.
+     */
+    public static void setPermissionExplainUi(PermissionExplainUi explainUi) {
+        permissionExplainUi = explainUi;
+    }
+
+    public static PermissionExplainUi getPermissionExplainUi() {
+        return permissionExplainUi;
+    }
+
+    /**
+     * Optional: inflate a layout that still uses the library's default id binding.
+     * Prefer {@link #setPermissionExplainUi} or {@link Callback#onCreatePermissionExplainView}
+     * if you want a fully free layout without id constraints.
+     * Pass {@code 0} to restore the library default layout file.
+     */
+    public static void setPermissionExplainLayout(int layoutResId) {
+        permissionExplainLayoutRes = layoutResId;
+    }
+
+    public static int getPermissionExplainLayout() {
+        return permissionExplainLayoutRes;
+    }
+
+    /** Resolves the default-path layout to inflate; falls back to library default. */
+    static int resolvePermissionExplainLayout() {
+        int custom = permissionExplainLayoutRes;
+        return custom != 0 ? custom : R.layout.sp_activity_permission;
     }
 
     /** Opens the app permission settings page (OEM-aware). */
