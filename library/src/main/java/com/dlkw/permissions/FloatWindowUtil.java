@@ -44,26 +44,35 @@ class FloatWindowUtil {
         }
     }
 
-    public static void applyPermission(Activity activity, int requestCode) {
+    /**
+     * @return true if a settings activity was started
+     */
+    public static boolean applyPermission(Activity activity, int requestCode) {
+        if (activity == null || activity.isFinishing()) {
+            return false;
+        }
         if (MeizuUtils.checkIsMeizuRom()) {
-            //这里也一样，魅族系统需要单独适配
             try {
                 Intent intent = new Intent("com.meizu.safe.security.SHOW_APPSEC");
                 intent.putExtra("packageName", activity.getPackageName());
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                // Do not set FLAG_ACTIVITY_NEW_TASK — it breaks onActivityResult delivery.
                 activity.startActivityForResult(intent, requestCode);
+                return true;
             } catch (Exception e) {
-                commonROMPermissionApplyInternal(activity, requestCode);
+                return commonROMPermissionApplyInternal(activity, requestCode);
             }
-        } else {
-            commonROMPermissionApplyInternal(activity, requestCode);
         }
+        return commonROMPermissionApplyInternal(activity, requestCode);
     }
 
-    public static void commonROMPermissionApplyInternal(Activity activity, int requestCode) {
-        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.setData(Uri.parse("package:" + activity.getPackageName()));
-        activity.startActivityForResult(intent, requestCode);
+    public static boolean commonROMPermissionApplyInternal(Activity activity, int requestCode) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+            intent.setData(Uri.parse("package:" + activity.getPackageName()));
+            activity.startActivityForResult(intent, requestCode);
+            return true;
+        } catch (Exception e) {
+            return PermissionSettings.openAppPermissionSettings(activity, requestCode);
+        }
     }
 }
