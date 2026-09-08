@@ -27,6 +27,20 @@ final class PermissionPrefs {
         editor.apply();
     }
 
+    /** Clears the "already requested" flag after a permission is granted (e.g. from Settings). */
+    static void clearRequested(Context context, String... permissions) {
+        if (permissions == null || permissions.length == 0) {
+            return;
+        }
+        SharedPreferences.Editor editor = prefs(context).edit();
+        for (String permission : permissions) {
+            if (permission != null) {
+                editor.remove(permission);
+            }
+        }
+        editor.apply();
+    }
+
     static boolean wasRequested(Context context, String permission) {
         return prefs(context).getBoolean(permission, false);
     }

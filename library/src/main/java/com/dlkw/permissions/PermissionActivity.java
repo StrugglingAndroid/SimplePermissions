@@ -55,11 +55,16 @@ public class PermissionActivity extends Activity {
     private boolean guidedPermanentDenied;
     /** True while waiting for Settings / special-permission activity result. */
     private boolean waitingForSettingsResult;
+    /** Request code of the settings page we last opened (for onResume fallback). */
+    private int pendingSettingsRequestCode = -1;
     /** True only while classifying results from {@link #onRequestPermissionsResult}. */
     private boolean classifyingFromSystemResult;
     /** True when explain UI came from Callback / PermissionExplainUi (no id binding). */
     private boolean usingCustomExplainUi;
     private PermissionExplainUi activeExplainUi;
+    private static final String STATE_PENDING_SETTINGS_CODE = "sp_state_pending_settings_code";
+    private final Runnable settingsReturnRunnable = this::consumeSettingsReturn;
+    private Runnable delayedSettingsHandleRunnable;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -71,6 +76,7 @@ public class PermissionActivity extends Activity {
                 resultDispatched = savedInstanceState.getBoolean(STATE_RESULT_DISPATCHED, false);
                 guidedPermanentDenied = savedInstanceState.getBoolean(STATE_GUIDED_PERMANENT, false);
                 waitingForSettingsResult = savedInstanceState.getBoolean(STATE_WAITING_SETTINGS, false);
+                pendingSettingsRequestCode = savedInstanceState.getInt(STATE_PENDING_SETTINGS_CODE, -1);
             } else {
                 callbackId = getIntent().getStringExtra(Permission.KEY_CALLBACK_ID);
             }
@@ -253,6 +259,7 @@ public class PermissionActivity extends Activity {
         outState.putBoolean(STATE_RESULT_DISPATCHED, resultDispatched);
         outState.putBoolean(STATE_GUIDED_PERMANENT, guidedPermanentDenied);
         outState.putBoolean(STATE_WAITING_SETTINGS, waitingForSettingsResult);
+        outState.putInt(STATE_PENDING_SETTINGS_CODE, pendingSettingsRequestCode);
         outState.putStringArrayList(STATE_PENDING, new ArrayList<>(tempPermissionSet));
         outState.putStringArrayList(STATE_GRANTED, new ArrayList<>(granted));
         outState.putStringArrayList(STATE_REJECTED, new ArrayList<>(rejected));
@@ -271,11 +278,36 @@ public class PermissionActivity extends Activity {
         }
         tempPermissionSet.clear();
         waitingForSettingsResult = false;
+        pendingSettingsRequestCode = -1;
         dispatchResultInternal();
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // Some OEMs return from Settings without delivering onActivityResult, or deliver it
+        // before PackageManager has refreshed. Defer so onActivityResult can run first.
+        if (waitingForSettingsResult && !resultDispatched && pendingSettingsRequestCode != -1) {
+            View decor = getWindow() != null ? getWindow().getDecorView() : null;
+            if (decor != null) {
+                decor.removeCallbacks(settingsReturnRunnable);
+                decor.post(settingsReturnRunnable);
+            } else {
+                consumeSettingsReturn();
+            }
+        }
+    }
+
+    @Override
     protected void onDestroy() {
+        View decor = getWindow() != null ? getWindow().getDecorView() : null;
+        if (decor != null) {
+            decor.removeCallbacks(settingsReturnRunnable);
+            if (delayedSettingsHandleRunnable != null) {
+                decor.removeCallbacks(delayedSettingsHandleRunnable);
+                delayedSettingsHandleRunnable = null;
+            }
+        }
         // Only finalize when finishing. Do not callback on process death / non-finishing destroy
         // (Settings navigation or config change) — static maps still hold the callback in-process.
         if (isFinishing() && !resultDispatched && callback != null) {
@@ -288,6 +320,106 @@ public class PermissionActivity extends Activity {
             dispatchResultInternal();
         }
         super.onDestroy();
+    }
+
+    /** Marks that we opened a settings page and expect to resume / get a result. */
+    private void markWaitingForSettings(int requestCode) {
+        waitingForSettingsResult = true;
+        pendingSettingsRequestCode = requestCode;
+    }
+
+    /**
+     * Handles return from any settings page. Safe to call from onActivityResult and onResume;
+     * only the first call wins.
+     */
+    private void consumeSettingsReturn() {
+        if (resultDispatched || !waitingForSettingsResult || pendingSettingsRequestCode == -1) {
+            return;
+        }
+        final int code = pendingSettingsRequestCode;
+        waitingForSettingsResult = false;
+        pendingSettingsRequestCode = -1;
+        // Brief delay: PackageManager / AppOps often lag right when Settings closes.
+        View decor = getWindow() != null ? getWindow().getDecorView() : null;
+        if (delayedSettingsHandleRunnable != null && decor != null) {
+            decor.removeCallbacks(delayedSettingsHandleRunnable);
+        }
+        delayedSettingsHandleRunnable = () -> {
+            delayedSettingsHandleRunnable = null;
+            if (!resultDispatched) {
+                handleSettingsReturn(code);
+            }
+        };
+        if (decor != null) {
+            decor.postDelayed(delayedSettingsHandleRunnable, 250);
+        } else {
+            delayedSettingsHandleRunnable.run();
+        }
+    }
+
+    private void handleSettingsReturn(int requestCode) {
+        if (REQ_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION == requestCode) {
+            tempPermissionSet.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+                addGranted(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+            } else {
+                addRejected(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+            }
+            requestPermissions();
+        } else if (REQ_MANAGE_OVERLAY_PERMISSION == requestCode) {
+            tempPermissionSet.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
+            if (Permission.hasFloatingWindowPermission(this)) {
+                addGranted(Manifest.permission.SYSTEM_ALERT_WINDOW);
+            } else {
+                addRejected(Manifest.permission.SYSTEM_ALERT_WINDOW);
+            }
+            requestPermissions();
+        } else if (REQ_MANAGE_UNKNOWN_APP_SOURCES == requestCode) {
+            tempPermissionSet.remove(Manifest.permission.REQUEST_INSTALL_PACKAGES);
+            if (Permission.hasPermission(this, Manifest.permission.REQUEST_INSTALL_PACKAGES)) {
+                addGranted(Manifest.permission.REQUEST_INSTALL_PACKAGES);
+            } else {
+                addRejected(Manifest.permission.REQUEST_INSTALL_PACKAGES);
+            }
+            requestPermissions();
+        } else if (REQ_APP_PERMISSION_SETTINGS == requestCode) {
+            recheckAfterSettings();
+            // Re-ask the system for anything still missing. After the user grants in
+            // Settings, checkSelfPermission can lag on some OEMs; requestPermissions
+            // returns GRANTED immediately once the grant is visible to the framework.
+            if (!permanentlyDenied.isEmpty() || hasUngrantedRejected()) {
+                ArrayList<String> retry = new ArrayList<>();
+                retry.addAll(permanentlyDenied);
+                for (String permission : new ArrayList<>(rejected)) {
+                    if (!retry.contains(permission) && !Permission.hasPermission(this, permission)) {
+                        retry.add(permission);
+                    }
+                }
+                permanentlyDenied.clear();
+                for (String permission : retry) {
+                    rejected.remove(permission);
+                    if (!Permission.isSpecialSettingsPermission(permission)) {
+                        tempPermissionSet.add(permission);
+                    } else if (!tempPermissionSet.contains(permission)) {
+                        tempPermissionSet.add(permission);
+                    }
+                }
+                // Keep guidedPermanentDenied=true so we deliver results instead of
+                // looping another settings dialog in this same session.
+                requestPermissions();
+            } else {
+                dispatchResultInternal();
+            }
+        }
+    }
+
+    private boolean hasUngrantedRejected() {
+        for (String permission : rejected) {
+            if (!Permission.hasPermission(this, permission)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -305,7 +437,7 @@ public class PermissionActivity extends Activity {
             classifyingFromSystemResult = true;
             try {
                 // Mark only after a real system callback so process-death mid-dialog
-                // cannot falsely trip isPermanentlyDenied / peelPermanentlyDenied.
+                // cannot falsely trip isPermanentlyDenied on the next launch.
                 PermissionPrefs.markRequested(this, permissions);
                 for (int i = 0; i < permissions.length; i++) {
                     String permission = permissions[i];
@@ -339,46 +471,19 @@ public class PermissionActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         try {
             super.onActivityResult(requestCode, resultCode, data);
-            if (REQ_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION == requestCode
-                    || REQ_MANAGE_OVERLAY_PERMISSION == requestCode
-                    || REQ_MANAGE_UNKNOWN_APP_SOURCES == requestCode
-                    || REQ_APP_PERMISSION_SETTINGS == requestCode) {
-                waitingForSettingsResult = false;
-            } else {
-                return;
-            }
-            if (REQ_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION == requestCode) {
-                tempPermissionSet.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-                    addGranted(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
-                } else {
-                    addRejected(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+            if (requestCode == REQ_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
+                    || requestCode == REQ_MANAGE_OVERLAY_PERMISSION
+                    || requestCode == REQ_MANAGE_UNKNOWN_APP_SOURCES
+                    || requestCode == REQ_APP_PERMISSION_SETTINGS) {
+                if (waitingForSettingsResult) {
+                    pendingSettingsRequestCode = requestCode;
+                    consumeSettingsReturn();
                 }
-                requestPermissions();
-            } else if (REQ_MANAGE_OVERLAY_PERMISSION == requestCode) {
-                tempPermissionSet.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                if (Permission.hasFloatingWindowPermission(this)) {
-                    addGranted(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                } else {
-                    addRejected(Manifest.permission.SYSTEM_ALERT_WINDOW);
-                }
-                requestPermissions();
-            } else if (REQ_MANAGE_UNKNOWN_APP_SOURCES == requestCode) {
-                tempPermissionSet.remove(Manifest.permission.REQUEST_INSTALL_PACKAGES);
-                if (Permission.hasPermission(this, Manifest.permission.REQUEST_INSTALL_PACKAGES)) {
-                    addGranted(Manifest.permission.REQUEST_INSTALL_PACKAGES);
-                } else {
-                    addRejected(Manifest.permission.REQUEST_INSTALL_PACKAGES);
-                }
-                requestPermissions();
-            } else if (REQ_APP_PERMISSION_SETTINGS == requestCode) {
-                recheckAfterSettings();
-                // Already guided once; deliver final result (do not show the guide again).
-                dispatchResultInternal();
             }
         } catch (Exception e) {
             e.printStackTrace();
             waitingForSettingsResult = false;
+            pendingSettingsRequestCode = -1;
             if (!resultDispatched) {
                 dispatchResultInternal();
             }
@@ -392,12 +497,13 @@ public class PermissionActivity extends Activity {
             if (Permission.hasPermission(this, permission)) {
                 rejected.remove(permission);
                 addGranted(permission);
-            } else if (Permission.isPermanentlyDenied(this, permission)) {
+            } else {
+                // Still missing after Settings — keep as permanent for this session result.
+                // Do not use isPermanentlyDenied() here: after a Settings revoke/re-grant cycle
+                // its prefs+rationale heuristic can be stale.
                 if (!permanentlyDenied.contains(permission)) {
                     permanentlyDenied.add(permission);
                 }
-            } else {
-                addRejected(permission);
             }
         }
         List<String> soft = new ArrayList<>(rejected);
@@ -422,10 +528,11 @@ public class PermissionActivity extends Activity {
                     new OnConfirmListener() {
                         @Override
                         public void onConfirm() {
-                            waitingForSettingsResult = true;
+                            markWaitingForSettings(REQ_APP_PERMISSION_SETTINGS);
                             if (!PermissionSettings.openAppPermissionSettings(
                                     PermissionActivity.this, REQ_APP_PERMISSION_SETTINGS)) {
                                 waitingForSettingsResult = false;
+                                pendingSettingsRequestCode = -1;
                                 dispatchResultInternal();
                             }
                         }
@@ -511,11 +618,6 @@ public class PermissionActivity extends Activity {
             Set<String> others = new LinkedHashSet<>(tempPermissionSet);
             others.remove(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
             if (!others.isEmpty()) {
-                peelPermanentlyDenied(others);
-                if (others.isEmpty()) {
-                    requestPermissions();
-                    return;
-                }
                 requestNormalPermissions(others, REQ_NORMAL_PERMISSIONS);
                 return;
             }
@@ -523,31 +625,10 @@ public class PermissionActivity extends Activity {
             return;
         }
 
-        peelPermanentlyDenied(tempPermissionSet);
-        if (tempPermissionSet.isEmpty()) {
-            dispatchResult();
-            return;
-        }
-
+        // Always go through the system API for remaining runtime permissions.
+        // Do NOT peel "permanently denied" via prefs alone — after the user grants in
+        // Settings, skipping requestPermissions causes a stuck "go to settings" loop.
         requestNormalPermissions(new LinkedHashSet<>(tempPermissionSet), REQ_NORMAL_PERMISSIONS);
-    }
-
-    private void peelPermanentlyDenied(Set<String> permissions) {
-        ArrayList<String> permanent = new ArrayList<>();
-        for (String permission : permissions) {
-            if (Permission.isPermanentlyDenied(this, permission)) {
-                permanent.add(permission);
-            }
-        }
-        for (String permission : permanent) {
-            permissions.remove(permission);
-            tempPermissionSet.remove(permission);
-            rejected.remove(permission);
-            granted.remove(permission);
-            if (!permanentlyDenied.contains(permission)) {
-                permanentlyDenied.add(permission);
-            }
-        }
     }
 
     private void handleManageExternalStorage() {
@@ -560,9 +641,10 @@ public class PermissionActivity extends Activity {
         showConfirmDialog("您的手机没有授予文件管理权限，请开启后再试", new OnConfirmListener() {
             @Override
             public void onConfirm() {
-                waitingForSettingsResult = true;
+                markWaitingForSettings(REQ_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                 if (!startManageAllFilesAccess()) {
                     waitingForSettingsResult = false;
+                    pendingSettingsRequestCode = -1;
                     addRejected(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
                     tempPermissionSet.remove(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
                     requestPermissions();
@@ -605,9 +687,10 @@ public class PermissionActivity extends Activity {
         showConfirmDialog("您的手机没有授予悬浮窗权限，请开启后再试", new OnConfirmListener() {
             @Override
             public void onConfirm() {
-                waitingForSettingsResult = true;
+                markWaitingForSettings(REQ_MANAGE_OVERLAY_PERMISSION);
                 if (!FloatWindowUtil.applyPermission(PermissionActivity.this, REQ_MANAGE_OVERLAY_PERMISSION)) {
                     waitingForSettingsResult = false;
+                    pendingSettingsRequestCode = -1;
                     addRejected(Manifest.permission.SYSTEM_ALERT_WINDOW);
                     tempPermissionSet.remove(Manifest.permission.SYSTEM_ALERT_WINDOW);
                     requestPermissions();
@@ -633,7 +716,7 @@ public class PermissionActivity extends Activity {
         showConfirmDialog("您的手机没有授予安装应用权限，请开启后再试", new OnConfirmListener() {
             @Override
             public void onConfirm() {
-                waitingForSettingsResult = true;
+                markWaitingForSettings(REQ_MANAGE_UNKNOWN_APP_SOURCES);
                 try {
                     Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
                     intent.setData(Uri.parse("package:" + getPackageName()));
@@ -642,6 +725,7 @@ public class PermissionActivity extends Activity {
                     if (!PermissionSettings.openAppPermissionSettings(
                             PermissionActivity.this, REQ_MANAGE_UNKNOWN_APP_SOURCES)) {
                         waitingForSettingsResult = false;
+                        pendingSettingsRequestCode = -1;
                         addRejected(Manifest.permission.REQUEST_INSTALL_PACKAGES);
                         tempPermissionSet.remove(Manifest.permission.REQUEST_INSTALL_PACKAGES);
                         requestPermissions();
@@ -667,14 +751,6 @@ public class PermissionActivity extends Activity {
             // Cannot request background location without foreground — soft reject (not permanent).
             addRejected(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
             tempPermissionSet.remove(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
-            requestPermissions();
-            return;
-        }
-        if (Permission.isPermanentlyDenied(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
-            tempPermissionSet.remove(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
-            if (!permanentlyDenied.contains(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
-                permanentlyDenied.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
-            }
             requestPermissions();
             return;
         }
@@ -744,6 +820,9 @@ public class PermissionActivity extends Activity {
         if (!granted.contains(permission)) {
             granted.add(permission);
         }
+        // Permission was granted (system dialog or Settings) — reset request history so a
+        // later revoke + re-request is not falsely treated as "Don't ask again".
+        PermissionPrefs.clearRequested(this, permission);
     }
 
     private void addRejected(String permission) {

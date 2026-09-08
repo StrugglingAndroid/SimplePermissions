@@ -158,6 +158,9 @@ public class Permission {
     /**
      * Returns true if the permission was denied and the system will no longer show the dialog
      * ("Don't ask again"), based on rationale + prior request history.
+     * <p>
+     * Do not use this alone to skip {@code requestPermissions}: after the user changes the
+     * grant in system Settings the heuristic can be stale — always ask the system again.
      */
     public static boolean isPermanentlyDenied(Activity activity, String permission) {
         if (activity == null || permission == null) {
