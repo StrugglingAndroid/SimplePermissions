@@ -579,11 +579,11 @@ public class PermissionActivity extends Activity {
                     granted, rejected, permanentlyDenied,
                     outGranted, outRejected, outPermanent);
             for (String permission : outPermanent) {
-                sb.append('\n*').append(Permission.permissionLabel(permission));
+                sb.append("\n*").append(Permission.permissionLabel(permission));
             }
         } else {
             for (String permission : permanentlyDenied) {
-                sb.append('\n*').append(Permission.permissionLabel(permission));
+                sb.append("\n*").append(Permission.permissionLabel(permission));
             }
         }
         return sb.toString();
