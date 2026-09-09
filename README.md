@@ -2,7 +2,7 @@
 
 轻量 Android 运行时权限库（Java）。通过透明 `Activity` + Callback 申请权限，自动适配存储 / 媒体 / 蓝牙 / 通知等版本差异，并处理「拒绝且不再询问」引导跳转设置页。
 
-- **坐标**：`com.gitee.yemesoft:simple-permissions:1.6.1`
+- **坐标**：`com.gitee.yemesoft:simple-permissions:1.6.2`
 - **minSdk**：23（Android 6.0+）
 - **compileSdk**：35
 - **兼容目标**：Android 7.0 – 当前主流版本；国内主流机型、三星、谷歌
@@ -25,7 +25,7 @@
 在宿主 `build.gradle` 中添加依赖（按你实际的 Maven 仓库配置）：
 
 ```gradle
-implementation 'com.gitee.yemesoft:simple-permissions:1.6.1'
+implementation 'com.gitee.yemesoft:simple-permissions:1.6.2'
 ```
 
 在 `AndroidManifest.xml` 中声明你要申请的权限（库本身不替宿主声明业务权限）。
