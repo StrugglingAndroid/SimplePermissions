@@ -59,12 +59,19 @@ public class PermissionActivity extends Activity {
     private boolean waitingForSettingsResult;
     /** Request code of the settings page we last opened (for onResume fallback). */
     private int pendingSettingsRequestCode = -1;
+    /**
+     * Permanent-deny guide included both notifications and other runtime permissions.
+     * Notification settings is opened first; app permission settings follows on return.
+     */
+    private boolean openAppSettingsAfterNotification;
     /** True only while classifying results from {@link #onRequestPermissionsResult}. */
     private boolean classifyingFromSystemResult;
     /** True when explain UI came from Callback / PermissionExplainUi (no id binding). */
     private boolean usingCustomExplainUi;
     private PermissionExplainUi activeExplainUi;
     private static final String STATE_PENDING_SETTINGS_CODE = "sp_state_pending_settings_code";
+    private static final String STATE_APP_SETTINGS_AFTER_NOTIFICATION =
+            "sp_state_app_settings_after_notification";
     private final Runnable settingsReturnRunnable = this::consumeSettingsReturn;
     private Runnable delayedSettingsHandleRunnable;
 
@@ -79,6 +86,8 @@ public class PermissionActivity extends Activity {
                 guidedPermanentDenied = savedInstanceState.getBoolean(STATE_GUIDED_PERMANENT, false);
                 waitingForSettingsResult = savedInstanceState.getBoolean(STATE_WAITING_SETTINGS, false);
                 pendingSettingsRequestCode = savedInstanceState.getInt(STATE_PENDING_SETTINGS_CODE, -1);
+                openAppSettingsAfterNotification = savedInstanceState.getBoolean(
+                        STATE_APP_SETTINGS_AFTER_NOTIFICATION, false);
             } else {
                 callbackId = getIntent().getStringExtra(Permission.KEY_CALLBACK_ID);
             }
@@ -262,6 +271,7 @@ public class PermissionActivity extends Activity {
         outState.putBoolean(STATE_GUIDED_PERMANENT, guidedPermanentDenied);
         outState.putBoolean(STATE_WAITING_SETTINGS, waitingForSettingsResult);
         outState.putInt(STATE_PENDING_SETTINGS_CODE, pendingSettingsRequestCode);
+        outState.putBoolean(STATE_APP_SETTINGS_AFTER_NOTIFICATION, openAppSettingsAfterNotification);
         outState.putStringArrayList(STATE_PENDING, new ArrayList<>(tempPermissionSet));
         outState.putStringArrayList(STATE_GRANTED, new ArrayList<>(granted));
         outState.putStringArrayList(STATE_REJECTED, new ArrayList<>(rejected));
@@ -281,6 +291,7 @@ public class PermissionActivity extends Activity {
         tempPermissionSet.clear();
         waitingForSettingsResult = false;
         pendingSettingsRequestCode = -1;
+        openAppSettingsAfterNotification = false;
         dispatchResultInternal();
     }
 
@@ -388,8 +399,26 @@ public class PermissionActivity extends Activity {
             tempPermissionSet.remove(Manifest.permission.POST_NOTIFICATIONS);
             if (Permission.hasNotificationPermission(this)) {
                 addGranted(Manifest.permission.POST_NOTIFICATIONS);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // API 33+ permanent-deny guide. Re-ask so a switch the user just
+                // enabled is observed even if PackageManager has not refreshed yet.
+                permanentlyDenied.remove(Manifest.permission.POST_NOTIFICATIONS);
+                rejected.remove(Manifest.permission.POST_NOTIFICATIONS);
+                tempPermissionSet.add(Manifest.permission.POST_NOTIFICATIONS);
             } else {
                 addRejected(Manifest.permission.POST_NOTIFICATIONS);
+            }
+            if (openAppSettingsAfterNotification) {
+                openAppSettingsAfterNotification = false;
+                if (!permanentlyDenied.isEmpty()) {
+                    markWaitingForSettings(REQ_APP_PERMISSION_SETTINGS);
+                    if (PermissionSettings.openAppPermissionSettings(
+                            this, REQ_APP_PERMISSION_SETTINGS)) {
+                        return;
+                    }
+                    waitingForSettingsResult = false;
+                    pendingSettingsRequestCode = -1;
+                }
             }
             requestPermissions();
         } else if (REQ_EXACT_ALARM_SETTINGS == requestCode) {
@@ -424,6 +453,10 @@ public class PermissionActivity extends Activity {
                 }
                 // Keep guidedPermanentDenied=true so we deliver results instead of
                 // looping another settings dialog in this same session.
+                requestPermissions();
+            } else if (!tempPermissionSet.isEmpty()) {
+                // Notification may still be queued for a system re-check after
+                // its own settings page, while every other permission is settled.
                 requestPermissions();
             } else {
                 dispatchResultInternal();
@@ -548,13 +581,7 @@ public class PermissionActivity extends Activity {
                     new OnConfirmListener() {
                         @Override
                         public void onConfirm() {
-                            markWaitingForSettings(REQ_APP_PERMISSION_SETTINGS);
-                            if (!PermissionSettings.openAppPermissionSettings(
-                                    PermissionActivity.this, REQ_APP_PERMISSION_SETTINGS)) {
-                                waitingForSettingsResult = false;
-                                pendingSettingsRequestCode = -1;
-                                dispatchResultInternal();
-                            }
+                            openPermanentDeniedSettings();
                         }
 
                         @Override
@@ -565,6 +592,43 @@ public class PermissionActivity extends Activity {
             return;
         }
         dispatchResultInternal();
+    }
+
+    /**
+     * Notification's master switch lives on the app notification page, not the
+     * OEM runtime-permission list. Open that page when {@code POST_NOTIFICATIONS}
+     * is among the permanent denials. Other runtime permissions still go to the
+     * app permission page afterwards.
+     */
+    private void openPermanentDeniedSettings() {
+        boolean hasNotification = permanentlyDenied.contains(Manifest.permission.POST_NOTIFICATIONS);
+        boolean hasOther = false;
+        for (String permission : permanentlyDenied) {
+            if (!Manifest.permission.POST_NOTIFICATIONS.equals(permission)) {
+                hasOther = true;
+                break;
+            }
+        }
+        if (hasNotification) {
+            openAppSettingsAfterNotification = hasOther;
+            markWaitingForSettings(REQ_NOTIFICATION_SETTINGS);
+            if (PermissionSettings.openNotificationSettings(this, REQ_NOTIFICATION_SETTINGS)) {
+                return;
+            }
+            openAppSettingsAfterNotification = false;
+            waitingForSettingsResult = false;
+            pendingSettingsRequestCode = -1;
+            if (!hasOther) {
+                dispatchResultInternal();
+                return;
+            }
+        }
+        markWaitingForSettings(REQ_APP_PERMISSION_SETTINGS);
+        if (!PermissionSettings.openAppPermissionSettings(this, REQ_APP_PERMISSION_SETTINGS)) {
+            waitingForSettingsResult = false;
+            pendingSettingsRequestCode = -1;
+            dispatchResultInternal();
+        }
     }
 
     private String buildPermanentDeniedMessage() {

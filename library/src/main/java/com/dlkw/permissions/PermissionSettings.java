@@ -47,7 +47,9 @@ public final class PermissionSettings {
     }
 
     /**
-     * Opens the app notification settings page (API 26+ channel settings; older → app details).
+     * Opens this app's notification settings (the master notification switch).
+     * Do not fall back to the OEM runtime-permission editor: that page has no
+     * notification toggle (camera / location / etc. only).
      *
      * @return true if an activity was started
      */
@@ -55,23 +57,28 @@ public final class PermissionSettings {
         if (activity == null || activity.isFinishing()) {
             return false;
         }
+        String pkg = activity.getPackageName();
+        int uid = activity.getApplicationInfo().uid;
         try {
-            Intent intent;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
-                intent.putExtra(Settings.EXTRA_APP_PACKAGE, activity.getPackageName());
-            } else {
-                intent = new Intent("android.settings.APP_NOTIFICATION_SETTINGS");
-                intent.putExtra("app_package", activity.getPackageName());
-                intent.putExtra("app_uid", activity.getApplicationInfo().uid);
-            }
-            if (canHandle(activity, intent)) {
-                activity.startActivityForResult(intent, requestCode);
-                return true;
-            }
+            Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+            intent.putExtra(Settings.EXTRA_APP_PACKAGE, pkg);
+            // OEM aliases. Some ROMs ignore EXTRA_APP_PACKAGE and open a generic list.
+            intent.putExtra("android.provider.extra.APP_PACKAGE", pkg);
+            intent.putExtra("app_package", pkg);
+            intent.putExtra("pkg", pkg);
+            intent.putExtra("package", pkg);
+            intent.putExtra("app_uid", uid);
+            activity.startActivityForResult(intent, requestCode);
+            return true;
         } catch (Exception ignored) {
         }
-        return openAppPermissionSettings(activity, requestCode);
+        // App info still has a Notifications entry. The OEM permission editor does not.
+        try {
+            activity.startActivityForResult(appDetailsIntent(activity), requestCode);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
